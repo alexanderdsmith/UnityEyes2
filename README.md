@@ -5,6 +5,7 @@ Ensure that the
 
 Config File to contain the following parameters:
 1) Head Pose
+   - Head pose (static or dynamic in a frame-rate based sequence)
    - Variation to the Head Pose:
      - What distribution the noise in the pose is sampled from (Gaussian distribution initially)
      - Specific parameterization of the noise in the position, translation and rotation, with different parameters for each of x, y, z, alpha, beta, gamma
