@@ -1,4 +1,7 @@
-﻿Shader "EyeShader" {
+﻿// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+// Upgrade NOTE: replaced '_World2Object' with 'unity_WorldToObject'
+
+Shader "EyeShader" {
 
 	Properties {
 		_MainTex ("Texture", 2D) = "white" {}
@@ -49,10 +52,10 @@
 			float3 viewDir = _WorldSpaceCameraPos - IN.worldPos;
 		
 			float3 frontNormalW = normalize(
-				mul((float3x3) _Object2World, float3(0.0,0.0,1.0)));
+				mul((float3x3) unity_ObjectToWorld, float3(0.0,0.0,1.0)));
 			
 			float heightW = saturate(dot(
-				IN.worldPos - mul((float3x3) _Object2World, float3(0.0,0.0,0.0109)),
+				IN.worldPos - mul((float3x3) unity_ObjectToWorld, float3(0.0,0.0,0.0109)),
 				frontNormalW));
 			
 			float3 refractedW = refract(
@@ -63,7 +66,7 @@
 			float cosAlpha = dot(frontNormalW, -refractedW);
 			float dist = heightW / cosAlpha;
 			float3 offsetW = dist * refractedW;
-			float3 offsetL = mul((float3x3) _World2Object, offsetW);
+			float3 offsetL = mul((float3x3) unity_WorldToObject, offsetW);
 			
 			// clamp offset to 12mm in total to avoid over-refraction
 			offsetL = clamp(offsetL, float3(-0.006,-0.006,-0.006), float3(0.006,0.006,0.006));
