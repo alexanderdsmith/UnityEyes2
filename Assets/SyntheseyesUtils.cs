@@ -4,7 +4,7 @@ using System.Collections;
 public class SyntheseyesUtils : MonoBehaviour {
 
 	public static Vector3 RandomVec(float thtMin, float thtMax, float phiMin, float phiMax){
-		
+
 		Vector3 retVec = Vector3.forward;
 		retVec = Quaternion.AngleAxis (Random.Range (thtMin, thtMax), Vector3.left) * retVec;
 		retVec = Quaternion.AngleAxis (Random.Range (phiMin, phiMax), Vector3.up) * retVec;

@@ -23,7 +23,7 @@ public class MoveCamera : MonoBehaviour {
             transform.LookAt(Vector3.zero, Vector3.up);
         }
 
-        Camera.main.orthographicSize += Input.mouseScrollDelta.y * -0.5f;
-        Camera.main.orthographicSize = Mathf.Clamp((float)Camera.main.orthographicSize, 1f, 6f);
+        Camera.main.orthographicSize += Input.mouseScrollDelta.y * -0.2f;
+        Camera.main.orthographicSize = Mathf.Clamp((float)Camera.main.orthographicSize, 1.8f, 1.8f);
     }
 }

@@ -5,8 +5,8 @@ using System.Net.Sockets;
 using System.Linq;
 using SimpleJSON;
 using System.Collections.Generic;
-using System.IO;               // Added for file I/O
-using System.Xml.Serialization; // Added for XML deserialization
+using System.IO;            
+using System.Xml.Serialization; 
 
 public class SynthesEyesServer : MonoBehaviour
 {
@@ -38,8 +38,14 @@ public class SynthesEyesServer : MonoBehaviour
     public float eyePitchNoise = 30;
     public float eyeYawNoise = 30;
 
+
     // should you save the data or not
     public bool isSavingData = false;
+
+	private Mesh eyemesh;
+
+	private LightingController lightingController;
+
 
     // frame index for saving
     int framesSaved = 0;
@@ -72,15 +78,18 @@ public class SynthesEyesServer : MonoBehaviour
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
                                 Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
 
+
         // Only randomize camera transform if the XML file is absent.
         if (string.IsNullOrEmpty(xmlCameraFilePath) || !File.Exists(xmlCameraFilePath))
         {
             Camera.main.transform.position = SyntheseyesUtils.RandomVec(
                 defaultCameraPitch - cameraPitchNoise, defaultCameraPitch + cameraPitchNoise,
                 defaultCameraYaw - cameraYawNoise, defaultCameraYaw + cameraYawNoise) * 10f;
-            Camera.main.transform.LookAt(Vector3.zero);
+
+            Camera.main.transform.LookAt(new Vector3(0f, 0f, 1f), Quaternion.AngleAxis(-90, Vector3.up) * Vector3.left);
         }
     }
+
 
     void Update()
     {
@@ -168,6 +177,7 @@ public class SynthesEyesServer : MonoBehaviour
             listCaruncle2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString("F4")));
         }
 
+
         JSONArray listIris2D = new JSONArray();
         rootNode.Add("iris_2d", listIris2D);
         foreach (var idx in EyeRegionTopology.iris_idxs)
@@ -180,6 +190,7 @@ public class SynthesEyesServer : MonoBehaviour
         rootNode.Add("lighting_details", lightingController.GetLightingDetails());
         rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
         rootNode.Add("head_pose", (Camera.main.transform.rotation.eulerAngles.ToString("F4")));
+        rootNode.Add("ground_truth", (eyeball.GetGazeVector()));
 
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
