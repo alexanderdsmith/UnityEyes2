@@ -6,6 +6,7 @@ Build/*
 Obj/*
 WebBuild/*
 WindowsBuild/*
+imgs/
 
 # ===================================== #
 # Visual Studio / MonoDevelop generated #
