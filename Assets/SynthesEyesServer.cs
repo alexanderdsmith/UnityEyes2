@@ -5,8 +5,8 @@ using System.Net.Sockets;
 using System.Linq;
 using SimpleJSON;
 using System.Collections.Generic;
-using System.IO;              
-using System.Xml.Serialization;
+using System.IO;               // Added for file I/O
+using System.Xml.Serialization; // Added for XML deserialization
 
 public class SynthesEyesServer : MonoBehaviour
 {
@@ -28,6 +28,7 @@ public class SynthesEyesServer : MonoBehaviour
 
     private LightingController lightingController;
 
+    // Render settings for randomization
     public float defaultCameraPitch = 0;
     public float defaultCameraYaw = 0;
     public float cameraPitchNoise = Mathf.Deg2Rad * 20;
@@ -37,17 +38,18 @@ public class SynthesEyesServer : MonoBehaviour
     public float eyePitchNoise = 30;
     public float eyeYawNoise = 30;
 
+    // should you save the data or not
     public bool isSavingData = false;
 
+    // frame index for saving
     int framesSaved = 0;
 
-    public string xmlCameraFilePath = "..\\camera.xml";
+    // NEW: Public field to hold the path to the camera XML configuration file.
+    public string xmlCameraFilePath = "camera.xml";
 
     void Start()
     {
-
-        Debug.Log(File.Exists(xmlCameraFilePath));
-
+        // Initialise SynthesEyes Objects
         eyeRegion = eyeRegionObj.GetComponent<EyeRegionController>();
         eyeball = eyeballObj.GetComponent<EyeballController>();
         eyeRegionSubdiv = eyeRegionSubdivObj.GetComponent<SubdivMesh>();
@@ -57,6 +59,7 @@ public class SynthesEyesServer : MonoBehaviour
 
         lightingController = GameObject.Find("lighting_controller").GetComponent<LightingController>();
 
+        // NEW: Load the camera settings from XML if a valid file is specified.
         if (!string.IsNullOrEmpty(xmlCameraFilePath) && File.Exists(xmlCameraFilePath))
         {
             LoadCameraFromFile(xmlCameraFilePath);
@@ -65,9 +68,11 @@ public class SynthesEyesServer : MonoBehaviour
 
     void RandomizeScene()
     {
+        // Randomize eye rotation
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
                                 Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
 
+        // Only randomize camera transform if the XML file is absent.
         if (string.IsNullOrEmpty(xmlCameraFilePath) || !File.Exists(xmlCameraFilePath))
         {
             Camera.main.transform.position = SyntheseyesUtils.RandomVec(
@@ -124,6 +129,7 @@ public class SynthesEyesServer : MonoBehaviour
     private IEnumerator saveFrame()
     {
         framesSaved++;
+        // Wait until the end of frame so that the screen buffer is ready
         yield return new WaitForEndOfFrame();
 
         int width = Screen.width;
@@ -178,6 +184,7 @@ public class SynthesEyesServer : MonoBehaviour
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
 
+    // NEW: Method to load camera settings (both intrinsic and extrinsic) from an XML file.
     private void LoadCameraFromFile(string file)
     {
         XmlSerializer serializer = new XmlSerializer(typeof(XMLCamera));
@@ -185,10 +192,13 @@ public class SynthesEyesServer : MonoBehaviour
         XMLCamera xmlCam = serializer.Deserialize(stream) as XMLCamera;
         stream.Close();
 
+        // Log: Start loading camera settings
         Debug.Log("Loading camera settings from XML file: " + file);
 
+        // Apply resolution settings
         if (xmlCam.Resolution.x > Screen.width || xmlCam.Resolution.y > Screen.height)
         {
+            // Optionally, you could set up a RenderTexture here.
             Debug.Log($"Resolution exceeds screen dimensions. Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
         }
         else
@@ -197,6 +207,7 @@ public class SynthesEyesServer : MonoBehaviour
             Debug.Log($"Resolution set to Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
         }
 
+        // Set intrinsic camera parameters
         Camera.main.nearClipPlane = xmlCam.Near;
         Camera.main.farClipPlane = xmlCam.Far;
         Camera.main.orthographicSize = xmlCam.OrthographicSize;
@@ -236,12 +247,14 @@ public class SynthesEyesServer : MonoBehaviour
             Debug.Log(xmlCam.ProjectionMatrix.ToString());
         }
 
+        // Apply extrinsic parameters
         Camera.main.transform.position = xmlCam.Position;
         Camera.main.transform.rotation = Quaternion.Euler(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
 
         Debug.Log($"Position: X={xmlCam.Position.x}, Y={xmlCam.Position.y}, Z={xmlCam.Position.z}");
         Debug.Log($"Rotation (Pitch, Yaw, Roll): Pitch={xmlCam.Pitch}, Yaw={xmlCam.Yaw}, Roll={xmlCam.Roll}");
 
+        // Log: Finished loading camera settings
         Debug.Log("Finished applying camera settings from XML.");
     }
 
