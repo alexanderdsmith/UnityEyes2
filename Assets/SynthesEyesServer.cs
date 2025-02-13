@@ -25,6 +25,8 @@ public class SynthesEyesServer : MonoBehaviour {
 	private SubdivMesh eyeWetnessSubdiv;
 	private DeformEyeLashes[] eyeLashes;
 
+	private Mesh eyemesh;
+
 	private LightingController lightingController;
 
 	// Render settings for randomization
@@ -63,8 +65,9 @@ public class SynthesEyesServer : MonoBehaviour {
 
         Camera.main.transform.position = SyntheseyesUtils.RandomVec(
             defaultCameraPitch - cameraPitchNoise, defaultCameraPitch + cameraPitchNoise,
-			defaultCameraYaw - cameraYawNoise, defaultCameraYaw + cameraYawNoise) *10f;
-        Camera.main.transform.LookAt(Vector3.zero);
+			defaultCameraYaw - cameraYawNoise, defaultCameraYaw + cameraYawNoise) * 10f;
+
+        Camera.main.transform.LookAt(new Vector3(0f,0f,1f), Quaternion.AngleAxis(-90, Vector3.up) * Vector3.left);
 
 	}
 
@@ -142,32 +145,34 @@ public class SynthesEyesServer : MonoBehaviour {
 
 		JSONNode rootNode = new JSONClass();
 
-		JSONArray listInteriorMargin2D = new JSONArray();
-		rootNode.Add ("interior_margin_2d", listInteriorMargin2D);
-		foreach (var idx in EyeRegionTopology.interior_margin_idxs) {
-			Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-			listInteriorMargin2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
-		}
+		// JSONArray listInteriorMargin2D = new JSONArray();
+		// rootNode.Add ("interior_margin_2d", listInteriorMargin2D);
+		// foreach (var idx in EyeRegionTopology.interior_margin_idxs) {
+		// 	Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+		// 	listInteriorMargin2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
+		// }
 
-		JSONArray listCaruncle2D = new JSONArray();
-		rootNode.Add ("caruncle_2d", listCaruncle2D);
-		foreach (var idx in EyeRegionTopology.caruncle_idxs) {
-			Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-			listCaruncle2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
-		}
+		// JSONArray listCaruncle2D = new JSONArray();
+		// rootNode.Add ("caruncle_2d", listCaruncle2D);
+		// foreach (var idx in EyeRegionTopology.caruncle_idxs) {
+		// 	Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+		// 	listCaruncle2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
+		// }
 
-		JSONArray listIris2D = new JSONArray();
-		rootNode.Add ("iris_2d", listIris2D);
-		foreach (var idx in EyeRegionTopology.iris_idxs) {
-			Vector3 v_3d = eyeball.transform.localToWorldMatrix * meshEyeBall.vertices[idx];
-			listIris2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
-		}
+		// JSONArray listIris2D = new JSONArray();
+		// rootNode.Add ("iris_2d", listIris2D);
+		// foreach (var idx in EyeRegionTopology.iris_idxs) {
+		// 	Vector3 v_3d = eyeball.transform.localToWorldMatrix * meshEyeBall.vertices[idx];
+		// 	listIris2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString ("F4")));
+		// }
 
-		rootNode.Add("eye_details", eyeball.GetEyeballDetails());
-        rootNode.Add("lighting_details", lightingController.GetLightingDetails());
-        rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
+		// rootNode.Add("eye_details", eyeball.GetEyeballDetails());
+        // rootNode.Add("lighting_details", lightingController.GetLightingDetails());
+        // rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
 
-        rootNode.Add ("head_pose", (Camera.main.transform.rotation.eulerAngles.ToString ("F4")));
+        // rootNode.Add ("head_pose", (Camera.main.transform.rotation.eulerAngles.ToString ("F4")));
+
+		rootNode.Add ("ground_truth", (eyeball.GetGazeVector()));
 		
 		System.IO.File.WriteAllText (string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
 

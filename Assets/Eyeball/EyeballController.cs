@@ -99,4 +99,23 @@ public class EyeballController : MonoBehaviour {
 
         return eyeballNode;
     }
+
+    public JSONNode GetGazeVector() {
+        JSONNode gazeNode = new JSONClass();
+
+        Mesh mesh = GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+
+        // calculate position of 3D iris middle
+        Vector3 iris_middle = Vector3.zero;
+        foreach (int idx in iris_idxs)
+            iris_middle += vertices[idx] / (float)iris_idxs.Length;
+
+        Vector3 irisCameraSpace = Camera.main.transform.InverseTransformPoint(iris_middle);
+
+        gazeNode.Add("iris_center", (irisCameraSpace).ToString("F4"));
+        gazeNode.Add("gaze_vec", (Camera.main.transform.worldToLocalMatrix * GetEyeLookVector()).ToString("F4"));
+
+        return gazeNode;
+    }
 }
