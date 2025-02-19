@@ -5,12 +5,37 @@ using System.Net.Sockets;
 using System.Linq;
 using SimpleJSON;
 using System.Collections.Generic;
-using System.IO;            
-using System.Xml.Serialization; 
+using System.IO;
+using System.Xml.Serialization;
 
-public class SynthesEyesServer : MonoBehaviour
-{
+// Add JSON serializable classes at the top
+[System.Serializable]
+public class CameraIntrinsics{
+    public float fx;
+    public float fy;
+    public float cx;
+    public float cy;
+    public int width;
+    public int height;
+}
 
+[System.Serializable]
+public class CameraConfig{
+    public string name;
+    public Vector3 position;
+    public Vector3 rotation;
+    public bool is_orthographic;
+    public CameraIntrinsics intrinsics;
+}
+
+[System.Serializable]
+public class CameraConfiguration{
+    public List<CameraConfig> cameras;
+}
+
+
+
+public class SynthesEyesServer : MonoBehaviour{
     public GameObject lightDirectionalObj;
     public GameObject eyeballObj;
     public GameObject eyeRegionObj;
@@ -38,19 +63,33 @@ public class SynthesEyesServer : MonoBehaviour
     public float eyePitchNoise = 30;
     public float eyeYawNoise = 30;
 
+    // Add these public fields somewhere near the top to define your offset ranges:
+    public float randomXRange = 0.5f;
+    public float randomYRange = 0.5f;
+    public float randomZRange = 0.5f;
+    public float randomPitchRange = Mathf.Deg2Rad * 3;
+    public float randomYawRange = Mathf.Deg2Rad * 3;
+    public float randomRollRange = Mathf.Deg2Rad * 3;
+
+    private float randomizeSceneStartTime = 0f;
+    private int randomizeSceneCallCount = 0;
+
+    // Camera management fields
+    private List<Camera> cameraList = new List<Camera>();
+    private int currentCameraIndex = 0;
+    public string jsonConfigPath = "camera_config.json";
 
     // should you save the data or not
     public bool isSavingData = false;
 
 	private Mesh eyemesh;
 
-	private LightingController lightingController;
-
-
     // frame index for saving
     int framesSaved = 0;
 
-    // NEW: Public field to hold the path to the camera XML configuration file.
+    // Store the camera's original transform from XML
+    private Vector3 xmlBasePosition;
+    private Vector3 xmlBaseEulerAngles;
     public string xmlCameraFilePath = "camera.xml";
 
     void Start()
@@ -65,34 +104,127 @@ public class SynthesEyesServer : MonoBehaviour
 
         lightingController = GameObject.Find("lighting_controller").GetComponent<LightingController>();
 
-        // NEW: Load the camera settings from XML if a valid file is specified.
-        if (!string.IsNullOrEmpty(xmlCameraFilePath) && File.Exists(xmlCameraFilePath))
+        // Load cameras from JSON oe XML
+        if (File.Exists(jsonConfigPath))
         {
+            LoadCamerasFromConfig(jsonConfigPath);
+        }
+        else if (File.Exists(xmlCameraFilePath))
+        {
+            Debug.LogWarning("Using legacy XML config");
             LoadCameraFromFile(xmlCameraFilePath);
+        }
+    }
+
+    // Camera loading implementation
+    private void LoadCamerasFromConfig(string configPath)
+    {
+        cameraList.Clear();
+
+        string jsonData = File.ReadAllText(configPath);
+        CameraConfiguration config = JsonUtility.FromJson<CameraConfiguration>(jsonData);
+
+        foreach (CameraConfig camConfig in config.cameras)
+        {
+            GameObject camObj = new GameObject(camConfig.name);
+            Camera newCam = camObj.AddComponent<Camera>();
+
+            camObj.transform.position = camConfig.position;
+            camObj.transform.eulerAngles = camConfig.rotation;
+
+            ConfigureCameraFromIntrinsics(newCam, camConfig);
+
+            newCam.tag = cameraList.Count == 0 ? "MainCamera" : "Untagged";
+            newCam.enabled = (cameraList.Count == 0);
+
+            cameraList.Add(newCam);
+        }
+    }
+
+    // Camera configuration logic
+    private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
+    {
+        cam.orthographic = config.is_orthographic;
+        cam.nearClipPlane = 0.3f;
+        cam.farClipPlane = 1000f;
+
+        if (config.is_orthographic)
+        {
+            cam.orthographicSize = config.intrinsics.height / (2 * config.intrinsics.fy);
+        }
+        else
+        {
+            float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
+            cam.fieldOfView = fov;
+
+            cam.usePhysicalProperties = true;
+            cam.sensorSize = new Vector2(
+                config.intrinsics.width / config.intrinsics.fx * 36f,
+                config.intrinsics.height / config.intrinsics.fy * 24f
+            );
         }
     }
 
     void RandomizeScene()
     {
+        // Record the start time on the first call
+        if (randomizeSceneCallCount == 0)
+        {
+            randomizeSceneStartTime = Time.time;
+        }
+        randomizeSceneCallCount++;
+
+
+        // After 100 calls, log the elapsed time
+        if (randomizeSceneCallCount == 1000)
+        {
+            float elapsedTime = Time.time - randomizeSceneStartTime;
+            Debug.Log($"RandomizeScene was called 100 times. Elapsed time: {elapsedTime:F2} seconds");
+        }
         // Randomize eye rotation
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
-                                Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
+                                 Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
 
 
-        // Only randomize camera transform if the XML file is absent.
-        if (string.IsNullOrEmpty(xmlCameraFilePath) || !File.Exists(xmlCameraFilePath))
-        {
-            Camera.main.transform.position = SyntheseyesUtils.RandomVec(
-                defaultCameraPitch - cameraPitchNoise, defaultCameraPitch + cameraPitchNoise,
-                defaultCameraYaw - cameraYawNoise, defaultCameraYaw + cameraYawNoise) * 10f;
+        // Sample offsets using NextGaussianDouble(), then clamp to ± random*Range
+        float offsetX = (float)SyntheseyesUtils.NextGaussianDouble() * (randomXRange / 2f);
+        offsetX = Mathf.Clamp(offsetX, -randomXRange, randomXRange);
 
-            Camera.main.transform.LookAt(new Vector3(0f, 0f, 1f), Quaternion.AngleAxis(-90, Vector3.up) * Vector3.left);
-        }
+        float offsetY = (float)SyntheseyesUtils.NextGaussianDouble() * (randomYRange / 2f);
+        offsetY = Mathf.Clamp(offsetY, -randomYRange, randomYRange);
+
+        float offsetZ = (float)SyntheseyesUtils.NextGaussianDouble() * (randomZRange / 2f);
+        offsetZ = Mathf.Clamp(offsetZ, -randomZRange, randomZRange);
+
+        float offsetPitch = (float)SyntheseyesUtils.NextGaussianDouble() * (randomPitchRange / 2f);
+        offsetPitch = Mathf.Clamp(offsetPitch, -randomPitchRange, randomPitchRange);
+
+        float offsetYaw = (float)SyntheseyesUtils.NextGaussianDouble() * (randomYawRange / 2f);
+        offsetYaw = Mathf.Clamp(offsetYaw, -randomYawRange, randomYawRange);
+
+        float offsetRoll = (float)SyntheseyesUtils.NextGaussianDouble() * (randomRollRange / 2f);
+        offsetRoll = Mathf.Clamp(offsetRoll, -randomRollRange, randomRollRange);
+
+        // Get current active camera
+        Camera currentCam = cameraList[currentCameraIndex];
+
+        // Apply offsets to active camera
+        currentCam.transform.position = xmlBasePosition + new Vector3(offsetX, offsetY, offsetZ);
+        currentCam.transform.eulerAngles = xmlBaseEulerAngles + new Vector3(offsetPitch, offsetYaw, offsetRoll);
     }
-
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            SwitchCamera(+1);
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            SwitchCamera(-1);
+        }
+
+
         if (isSavingData || Input.GetKey("c"))
         {
             RandomizeScene();
@@ -125,6 +257,17 @@ public class SynthesEyesServer : MonoBehaviour
             GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled = !GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled;
     }
 
+    private void SwitchCamera(int direction) {
+        cameraList[currentCameraIndex].enabled = false;
+        
+        currentCameraIndex = (currentCameraIndex + direction) % cameraList.Count;
+        if (currentCameraIndex < 0) currentCameraIndex = cameraList.Count - 1;
+        
+        cameraList[currentCameraIndex].enabled = true;
+        cameraList[currentCameraIndex].tag = "MainCamera";
+    }
+
+
     private Color parseColor(JSONNode jN)
     {
         return new Color(jN[0].AsFloat, jN[1].AsFloat, jN[2].AsFloat, 1.0f);
@@ -156,6 +299,8 @@ public class SynthesEyesServer : MonoBehaviour
 
     private void saveDetails(int frame)
     {
+        Camera activeCam = cameraList[currentCameraIndex];
+
         Mesh meshEyeRegion = eyeRegion.transform.GetComponent<MeshFilter>().mesh;
         Mesh meshEyeBall = eyeball.transform.GetComponent<MeshFilter>().mesh;
 
@@ -190,12 +335,15 @@ public class SynthesEyesServer : MonoBehaviour
         rootNode.Add("lighting_details", lightingController.GetLightingDetails());
         rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
         rootNode.Add("head_pose", (Camera.main.transform.rotation.eulerAngles.ToString("F4")));
+        
+        // New saving method for optical axis and 3D position in space
         rootNode.Add("ground_truth", (eyeball.GetGazeVector()));
+        rootNode.Add("camera_pose", (eyeball.GetCameratoEyeCenterPose()));
 
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
 
-    // NEW: Method to load camera settings (both intrinsic and extrinsic) from an XML file.
+    // Method to load camera settings (both intrinsic and extrinsic) from an XML file.
     private void LoadCameraFromFile(string file)
     {
         XmlSerializer serializer = new XmlSerializer(typeof(XMLCamera));
@@ -254,13 +402,17 @@ public class SynthesEyesServer : MonoBehaviour
         if (xmlCam.UseProjectionMatrix)
         {
             Camera.main.projectionMatrix = xmlCam.ProjectionMatrix;
-            Debug.Log("Custom Projection Matrix Applied");
+            Debug.Log("Custom Projection Matrix Applied");  
             Debug.Log(xmlCam.ProjectionMatrix.ToString());
         }
 
         // Apply extrinsic parameters
         Camera.main.transform.position = xmlCam.Position;
         Camera.main.transform.rotation = Quaternion.Euler(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
+
+        // Save the base transform for later randomization
+        xmlBasePosition = xmlCam.Position;
+        xmlBaseEulerAngles = new Vector3(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
 
         Debug.Log($"Position: X={xmlCam.Position.x}, Y={xmlCam.Position.y}, Z={xmlCam.Position.z}");
         Debug.Log($"Rotation (Pitch, Yaw, Roll): Pitch={xmlCam.Pitch}, Yaw={xmlCam.Yaw}, Roll={xmlCam.Roll}");

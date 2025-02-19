@@ -1,0 +1,48 @@
+{
+  "cameras": [
+    {
+      "name": "camera_1",
+      "position": {
+        "x": 2.2,
+        "y": 2.2,
+        "z": 4.7
+      },
+      "rotation": {
+        "x": 155,
+        "y": 35,
+        "z": 225
+      },
+      "is_orthographic": false,
+      "intrinsics": {
+        "fx": 584.89,
+        "fy": 584.89,
+        "cx": 320,
+        "cy": 240,
+        "width": 640,
+        "height": 480
+      }
+    },
+    {
+      "name": "camera_2",
+      "position": {
+        "x": -2.2,
+        "y": 2.2,
+        "z": 4.7
+      },
+      "rotation": {
+        "x": 155,
+        "y": -35,
+        "z": -225
+      },
+      "is_orthographic": false,
+      "intrinsics": {
+        "fx": 584.89,
+        "fy": 584.89,
+        "cx": 320,
+        "cy": 240,
+        "width": 640,
+        "height": 480
+      }
+    }
+  ]
+}

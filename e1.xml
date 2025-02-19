@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Camera>
+  <Resolution>
+    <x>640</x>
+    <y>480</y>
+  </Resolution>
+  <IsOrthographic>false</IsOrthographic>
+  <OrthographicSize>5.0</OrthographicSize>
+  <UseProjectionMatrix>false</UseProjectionMatrix>
+  <IsPhysicalCamera>true</IsPhysicalCamera>
+  <Near>0.1</Near>
+  <Far>1000.0</Far>
+  <FieldOfView>40.5</FieldOfView>
+  <Focal>32.9</Focal>
+  <SensorSize>
+    <x>36</x>
+    <y>24</y>
+  </SensorSize>
+  <LensShift>
+    <x>-0.0034</x>
+    <y>-0.0214</y>
+  </LensShift>
+  <GateFitMode>Fill</GateFitMode>
+
+  <Pitch>155</Pitch>
+  <Yaw>35</Yaw>
+  <Roll>225.0</Roll>
+  <Position>
+    <x>2.2</x>
+    <y>2.2</y>
+    <z>4.7</z>
+  </Position>
+</Camera>
