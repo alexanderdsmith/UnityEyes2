@@ -111,10 +111,20 @@ public class EyeballController : MonoBehaviour {
         foreach (int idx in iris_idxs)
             iris_middle += vertices[idx] / (float)iris_idxs.Length;
 
+        // Debug: After calculation 
+        Debug.Log($"Calculated iris_middle (local): {iris_middle}");
+        Debug.Log($"World space iris: {transform.TransformPoint(iris_middle)}");
+
         Vector3 irisCameraSpace = Camera.main.transform.InverseTransformPoint(iris_middle);
+        Debug.Log($"Camera space iris: {irisCameraSpace}");
+
+        Vector3 gazeVector = Camera.main.transform.worldToLocalMatrix * GetEyeLookVector();
+        Debug.Log($"Gaze vector (camera space): {gazeVector}");
+        Debug.DrawRay(iris_middle, gazeVector * 0.5f, Color.blue, 0.1f);
 
         gazeNode.Add("iris_center", (irisCameraSpace).ToString("F4"));
         gazeNode.Add("gaze_vec", (Camera.main.transform.worldToLocalMatrix * GetEyeLookVector()).ToString("F4"));
+
 
         return gazeNode;
     }
