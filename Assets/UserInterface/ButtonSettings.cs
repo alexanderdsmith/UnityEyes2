@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿
+/*using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
 
@@ -11,15 +12,16 @@ public class ButtonSettings : MonoBehaviour {
     void Start () {
         GameObject.Find("Settings Menu").GetComponent<Canvas>().enabled = false;
 
-        Button buttonInput = this.GetComponent<Button>() as Button;
-        buttonInput.onClick.AddListener(OpenSettings);
+//        Button buttonInput = this.GetComponent<Button>() as Button;
+ //       buttonInput.onClick.AddListener(OpenSettings);
     }
 	
 	void OpenSettings() {
-        GameObject.Find("Settings Menu").GetComponent<Canvas>().enabled = true;
+
     }
 
     void CloseSettings() {
 
     }
 }
+*/

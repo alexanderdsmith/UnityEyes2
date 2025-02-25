@@ -343,6 +343,7 @@ public class SynthesEyesServer : MonoBehaviour{
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
 
+
     // Method to load camera settings (both intrinsic and extrinsic) from an XML file.
     private void LoadCameraFromFile(string file)
     {
