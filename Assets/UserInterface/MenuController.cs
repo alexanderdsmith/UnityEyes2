@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using SimpleJSON;
 using System.Linq;
+using TMPro;
 
 
 public class MenuController : MonoBehaviour
@@ -52,8 +53,9 @@ public class MenuController : MonoBehaviour
     // References to input fields for each group
     private class InputFieldRefs
     {
-        public InputField fx, fy, cx, cy, width, height;    // For intrinsics groups
-        public InputField x, y, z, rx, ry, rz;             // For extrinsics groups
+        // Change from InputField to TMP_InputField
+        public TMP_InputField fx, fy, cx, cy, width, height;    // For intrinsics groups
+        public TMP_InputField x, y, z, rx, ry, rz;             // For extrinsics groups
     }
 
     private Dictionary<string, InputFieldRefs> groupInputs = new Dictionary<string, InputFieldRefs>();
@@ -72,6 +74,10 @@ public class MenuController : MonoBehaviour
     [SerializeField] public Toggle multiCameraToggle;
     [SerializeField] private InputField intrinsicsPathField;
     [SerializeField] private InputField extrinsicsPathField;
+
+    [Header("Camera Controls")]
+    [SerializeField] private Button addCameraButton;      
+    [SerializeField] private Button removeCameraButton;    
 
     // ---------------------------------------------------------
     // Parameter Distribution
@@ -129,7 +135,7 @@ public class MenuController : MonoBehaviour
     {
         settingsMenu = GameObject.Find("SettingsMenu"); // Find the GameObject by name
         cameraGroup = GameObject.Find("CameraGroup");
-        intrinsicsGroup = transform.Find("IntrinsicsGroup").GetComponent<RectTransform>();
+        // intrinsicsGroup = transform.Find("IntrinsicsGroup").GetComponent<RectTransform>();
 
         menuButton = GameObject.Find("MenuButton").GetComponent<Button>(); // Find the Button component
         closeButton = GameObject.Find("ExitButton").GetComponent<Button>();
@@ -250,102 +256,296 @@ public class MenuController : MonoBehaviour
 
     private void InitializeCameraGroups()
     {
+        Debug.Log("Starting to initialize camera groups");
+
         // Initialize dictionaries for each group
         groupValues["Intrinsics"] = new Dictionary<string, float>();
         groupValues["IntrinsicsNoise"] = new Dictionary<string, float>();
         groupValues["Extrinsics"] = new Dictionary<string, float>();
         groupValues["ExtrinsicsNoise"] = new Dictionary<string, float>();
 
-        // Find and initialize Intrinsics group
-        if (intrinsicsGroup != null)
+        // Find and initialize all four groups
+        GameObject intrinsicsGroupObj = GameObject.Find("IntrinsicsGroup");
+        if (intrinsicsGroupObj != null)
         {
-            groupInputs["Intrinsics"] = new InputFieldRefs
-            {
-                fx = intrinsicsGroup.Find("fxInput").GetComponent<InputField>(),
-                fy = intrinsicsGroup.Find("fyInput").GetComponent<InputField>(),
-                cx = intrinsicsGroup.Find("cxInput").GetComponent<InputField>(),
-                cy = intrinsicsGroup.Find("cyInput").GetComponent<InputField>(),
-                width = intrinsicsGroup.Find("widthInput").GetComponent<InputField>(),
-                height = intrinsicsGroup.Find("heightInput").GetComponent<InputField>()
-            };
-            InitializeIntrinsicsListeners("Intrinsics");
+            Debug.Log("Found IntrinsicsGroup GameObject");
+            intrinsicsGroup = intrinsicsGroupObj.GetComponent<RectTransform>();
+            InitializeIntrinsicsFields("Intrinsics", intrinsicsGroupObj.transform);
+        }
+        else
+        {
+            Debug.LogError("Cannot find IntrinsicsGroup in the scene");
         }
 
-        // Find and initialize IntrinsicsNoise group
-        if (intrinsicsNoiseGroup != null)
+        GameObject intrinsicsNoiseGroupObj = GameObject.Find("IntrinsicsNoiseGroup");
+        if (intrinsicsNoiseGroupObj != null)
         {
-            groupInputs["IntrinsicsNoise"] = new InputFieldRefs
-            {
-                fx = intrinsicsNoiseGroup.Find("fxInput").GetComponent<InputField>(),
-                fy = intrinsicsNoiseGroup.Find("fyInput").GetComponent<InputField>(),
-                cx = intrinsicsNoiseGroup.Find("cxInput").GetComponent<InputField>(),
-                cy = intrinsicsNoiseGroup.Find("cyInput").GetComponent<InputField>(),
-                width = intrinsicsNoiseGroup.Find("widthInput").GetComponent<InputField>(),
-                height = intrinsicsNoiseGroup.Find("heightInput").GetComponent<InputField>()
-            };
-            InitializeIntrinsicsListeners("IntrinsicsNoise");
+            Debug.Log("Found IntrinsicsNoiseGroup GameObject");
+            intrinsicsNoiseGroup = intrinsicsNoiseGroupObj.transform;
+            InitializeIntrinsicsFields("IntrinsicsNoise", intrinsicsNoiseGroupObj.transform);
+        }
+        else
+        {
+            Debug.LogError("Cannot find IntrinsicsNoiseGroup in the scene");
         }
 
-        // Find and initialize Extrinsics group
-        if (extrinsicsGroup != null)
+        GameObject extrinsicsGroupObj = GameObject.Find("ExtrinsicsGroup");
+        if (extrinsicsGroupObj != null)
         {
-            groupInputs["Extrinsics"] = new InputFieldRefs
-            {
-                x = extrinsicsGroup.Find("xInput").GetComponent<InputField>(),
-                y = extrinsicsGroup.Find("yInput").GetComponent<InputField>(),
-                z = extrinsicsGroup.Find("zInput").GetComponent<InputField>(),
-                rx = extrinsicsGroup.Find("rxInput").GetComponent<InputField>(),
-                ry = extrinsicsGroup.Find("ryInput").GetComponent<InputField>(),
-                rz = extrinsicsGroup.Find("rzInput").GetComponent<InputField>()
-            };
-            InitializeExtrinsicsListeners("Extrinsics");
+            Debug.Log("Found ExtrinsicsGroup GameObject");
+            extrinsicsGroup = extrinsicsGroupObj.GetComponent<RectTransform>();
+            InitializeExtrinsicsFields("Extrinsics", extrinsicsGroupObj.transform);
+        }
+        else
+        {
+            Debug.LogError("Cannot find ExtrinsicsGroup in the scene");
         }
 
-        // Find and initialize ExtrinsicsNoise group
-        if (extrinsicsNoiseGroup != null)
+        GameObject extrinsicsNoiseGroupObj = GameObject.Find("ExtrinsicsNoiseGroup");
+        if (extrinsicsNoiseGroupObj != null)
         {
-            groupInputs["ExtrinsicsNoise"] = new InputFieldRefs
-            {
-                x = extrinsicsNoiseGroup.Find("xInput").GetComponent<InputField>(),
-                y = extrinsicsNoiseGroup.Find("yInput").GetComponent<InputField>(),
-                z = extrinsicsNoiseGroup.Find("zInput").GetComponent<InputField>(),
-                rx = extrinsicsNoiseGroup.Find("rxInput").GetComponent<InputField>(),
-                ry = extrinsicsNoiseGroup.Find("ryInput").GetComponent<InputField>(),
-                rz = extrinsicsNoiseGroup.Find("rzInput").GetComponent<InputField>()
-            };
-            InitializeExtrinsicsListeners("ExtrinsicsNoise");
+            Debug.Log("Found ExtrinsicsNoiseGroup GameObject");
+            extrinsicsNoiseGroup = extrinsicsNoiseGroupObj.transform;
+            InitializeExtrinsicsFields("ExtrinsicsNoise", extrinsicsNoiseGroupObj.transform);
+        }
+        else
+        {
+            Debug.LogError("Cannot find ExtrinsicsNoiseGroup in the scene");
         }
 
-        // Initialize default values for all groups
+        // Initialize default values
         InitializeDefaultValues();
     }
 
-    private void InitializeIntrinsicsListeners(string groupName)
+    private void InitializeIntrinsicsFields(string groupName, Transform groupTransform)
     {
-        var inputs = groupInputs[groupName];
-        var values = groupValues[groupName];
+        Debug.Log($"Initializing {groupName} fields");
 
-        inputs.fx?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "fx", value));
-        inputs.fy?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "fy", value));
-        inputs.cx?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "cx", value));
-        inputs.cy?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "cy", value));
-        inputs.width?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "width", value));
-        inputs.height?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "height", value));
+        // Create a new entry in the groupInputs dictionary
+        groupInputs[groupName] = new InputFieldRefs();
+
+        // Find the input fields directly by name from the children of IntrinsicsGroup
+        Transform fxInput = FindChildByName(groupTransform, "fxInput");
+        if (fxInput != null)
+        {
+            groupInputs[groupName].fx = fxInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found fxInput: {groupInputs[groupName].fx != null}");
+
+            if (groupInputs[groupName].fx != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].fx, groupName, "fx");
+            }
+        }
+
+        // Similarly set up the other input fields with the same pattern
+        Transform fyInput = FindChildByName(groupTransform, "fyInput");
+        if (fyInput != null)
+        {
+            groupInputs[groupName].fy = fyInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found fyInput: {groupInputs[groupName].fy != null}");
+
+            if (groupInputs[groupName].fy != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].fy, groupName, "fy");
+            }
+        }
+
+        // Continue with cx, cy, width, height
+        Transform cxInput = FindChildByName(groupTransform, "cxInput");
+        if (cxInput != null)
+        {
+            groupInputs[groupName].cx = cxInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found cxInput: {groupInputs[groupName].cx != null}");
+
+            if (groupInputs[groupName].cx != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].cx, groupName, "cx");
+            }
+        }
+
+        Transform cyInput = FindChildByName(groupTransform, "cyInput");
+        if (cyInput != null)
+        {
+            groupInputs[groupName].cy = cyInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found cyInput: {groupInputs[groupName].cy != null}");
+
+            if (groupInputs[groupName].cy != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].cy, groupName, "cy");
+            }
+        }
+
+        Transform widthInput = FindChildByName(groupTransform, "widthInput");
+        if (widthInput != null)
+        {
+            groupInputs[groupName].width = widthInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found widthInput: {groupInputs[groupName].width != null}");
+
+            if (groupInputs[groupName].width != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].width, groupName, "width");
+            }
+        }
+
+        Transform heightInput = FindChildByName(groupTransform, "heightInput");
+        if (heightInput != null)
+        {
+            groupInputs[groupName].height = heightInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found heightInput: {groupInputs[groupName].height != null}");
+
+            if (groupInputs[groupName].height != null)
+            {
+                SetupInputFieldListeners(groupInputs[groupName].height, groupName, "height");
+            }
+        }
     }
 
-    private void InitializeExtrinsicsListeners(string groupName)
+    private void InitializeExtrinsicsFields(string groupName, Transform groupTransform)
     {
-        var inputs = groupInputs[groupName];
-        var values = groupValues[groupName];
+        Debug.Log($"Initializing {groupName} fields");
 
-        inputs.x?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "x", value));
-        inputs.y?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "y", value));
-        inputs.z?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "z", value));
-        inputs.rx?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "rx", value));
-        inputs.ry?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "ry", value));
-        inputs.rz?.onValueChanged.AddListener((value) => OnValueChanged(groupName, "rz", value));
+        // Create a new entry in the groupInputs dictionary
+        groupInputs[groupName] = new InputFieldRefs();
+
+
+        // Find the input fields directly by name from the children of ExtrinsicsGroup
+        Transform xInput = FindChildByName(groupTransform, "xInput");
+        if (xInput != null)
+        {
+            groupInputs[groupName].x = xInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found xInput: {groupInputs[groupName].x != null}");
+
+            if (groupInputs[groupName].x != null)
+            {
+                Debug.Log($"----------- IN HERE 1");
+                SetupInputFieldListeners(groupInputs[groupName].x, groupName, "x");
+            }
+        }
+
+        Transform yInput = FindChildByName(groupTransform, "yInput");
+        if (yInput != null)
+        {
+            groupInputs[groupName].y = yInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found yInput: {groupInputs[groupName].y != null}");
+
+            if (groupInputs[groupName].y != null)
+            {
+                Debug.Log($"----------- IN HERE 2");
+                SetupInputFieldListeners(groupInputs[groupName].y, groupName, "y");
+            }
+        }
+
+        Transform zInput = FindChildByName(groupTransform, "zInput");
+        if (zInput != null)
+        {
+            groupInputs[groupName].z = zInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found zInput: {groupInputs[groupName].z != null}");
+
+            if (groupInputs[groupName].z != null)
+            {
+                Debug.Log($"----------- IN HERE 3");
+                SetupInputFieldListeners(groupInputs[groupName].z, groupName, "z");
+            }
+        }
+
+        Transform rxInput = FindChildByName(groupTransform, "rxInput");
+        if (rxInput != null)
+        {
+            groupInputs[groupName].rx = rxInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found rxInput: {groupInputs[groupName].rx != null}");
+
+            if (groupInputs[groupName].rx != null)
+            {
+                Debug.Log($"----------- IN HERE 4");
+                SetupInputFieldListeners(groupInputs[groupName].rx, groupName, "rx");
+            }
+        }
+
+        Transform ryInput = FindChildByName(groupTransform, "ryInput");
+        if (ryInput != null)
+        {
+            groupInputs[groupName].ry = ryInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found ryInput: {groupInputs[groupName].ry != null}");
+
+            if (groupInputs[groupName].ry != null)
+            {
+                Debug.Log($"----------- IN HERE 5");
+                SetupInputFieldListeners(groupInputs[groupName].ry, groupName, "ry");
+            }
+        }
+
+        Transform rzInput = FindChildByName(groupTransform, "rzInput");
+        if (rzInput != null)
+        {
+            groupInputs[groupName].rz = rzInput.GetComponent<TMP_InputField>();
+            Debug.Log($"Found rzInput: {groupInputs[groupName].rz != null}");
+
+            if (groupInputs[groupName].rz != null)
+            {
+                Debug.Log($"----------- IN HERE 6");
+                SetupInputFieldListeners(groupInputs[groupName].rz, groupName, "rz");
+            }
+        }
+
     }
 
+    private Transform FindChildByName(Transform parent, string childName)
+    {
+        // First try direct child
+        Transform child = parent.Find(childName);
+        if (child != null)
+        {
+            Debug.Log($"Found {childName} as direct child of {parent.name}");
+            return child;
+        }
+
+        // Output all child names for debugging
+        string childrenNames = "";
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            childrenNames += parent.GetChild(i).name + ", ";
+        }
+        Debug.Log($"Children of {parent.name}: {childrenNames}");
+
+        // Loop through all children
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform childTransform = parent.GetChild(i);
+            Debug.Log($"Checking child: {childTransform.name}");
+
+            // Check if this child has the name we're looking for
+            if (childTransform.name == childName)
+            {
+                Debug.Log($"Found match: {childName}");
+                return childTransform;
+            }
+
+            // Recursively search in this child's children
+            Transform result = FindChildByName(childTransform, childName);
+            if (result != null)
+                return result;
+        }
+
+        Debug.Log($"Could not find {childName} in {parent.name} or its children");
+        return null;
+    }
+
+
+    private void SetupInputFieldListeners(TMP_InputField inputField, string groupName, string fieldName)
+    {
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onValueChanged.AddListener((value) => {
+            Debug.Log($"{fieldName}Input value changed to: {value}");
+            OnValueChanged(groupName, fieldName, value);
+        });
+
+        inputField.onEndEdit.AddListener((value) => {
+            Debug.Log($"{fieldName}Input editing ended with value: {value}");
+            OnValueChanged(groupName, fieldName, value);
+        });
+    }
 
     private void InitializeDefaultValues()
     {
@@ -374,22 +574,40 @@ public class MenuController : MonoBehaviour
 
     private void OnValueChanged(string groupName, string fieldName, string value)
     {
-        if (float.TryParse(value, out float result))
+        Debug.Log($"OnValueChanged called for {groupName}.{fieldName} = {value}");
+
+        // Make sure the group exists
+        if (!groupValues.ContainsKey(groupName))
         {
-            groupValues[groupName][fieldName] = result;
+            Debug.LogError($"Group '{groupName}' not found in groupValues dictionary");
+            groupValues[groupName] = new Dictionary<string, float>();
+        }
 
-            // Log updated values
-            Debug.Log($"=== Value Change Details ===");
-            Debug.Log($"Group: {groupName}");
-            Debug.Log($"Field: {fieldName}");
-            Debug.Log($"New Value: {result}");
+        // Make sure the field exists
+        if (!groupValues[groupName].ContainsKey(fieldName))
+        {
+            Debug.Log($"Field '{fieldName}' not found in {groupName}, initializing to 0");
+            groupValues[groupName][fieldName] = 0f;
+        }
 
-            Debug.Log("Current Group Values:");
-            foreach (var kvp in groupValues[groupName])
-            {
-                Debug.Log($"{kvp.Key}: {kvp.Value}");
-            }
-            Debug.Log("========================");
+        // Try to parse the value, defaulting to 0 if it fails
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float parsedValue))
+        {
+            Debug.LogWarning($"Could not parse '{value}' as float for {groupName}.{fieldName}, using 0");
+            parsedValue = 0f;
+        }
+
+        // Update the value in the dictionary
+        groupValues[groupName][fieldName] = parsedValue;
+
+        // Log the update
+        Debug.Log($"Updated {groupName}.{fieldName} to {parsedValue}");
+
+        // Log all values in this group
+        Debug.Log($"Current values in {groupName}:");
+        foreach (var pair in groupValues[groupName])
+        {
+            Debug.Log($"  {pair.Key}: {pair.Value}");
         }
     }
 
@@ -399,34 +617,56 @@ public class MenuController : MonoBehaviour
         // Restore Intrinsics and IntrinsicsNoise values
         foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
         {
-            if (groupInputs.ContainsKey(group))
+            if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))
             {
                 var inputs = groupInputs[group];
                 var values = groupValues[group];
 
-                if (inputs.fx != null) inputs.fx.text = values["fx"].ToString();
-                if (inputs.fy != null) inputs.fy.text = values["fy"].ToString();
-                if (inputs.cx != null) inputs.cx.text = values["cx"].ToString();
-                if (inputs.cy != null) inputs.cy.text = values["cy"].ToString();
-                if (inputs.width != null) inputs.width.text = values["width"].ToString();
-                if (inputs.height != null) inputs.height.text = values["height"].ToString();
+                if (inputs.fx != null && values.ContainsKey("fx"))
+                    inputs.fx.text = values["fx"].ToString();
+
+                if (inputs.fy != null && values.ContainsKey("fy"))
+                    inputs.fy.text = values["fy"].ToString();
+
+                if (inputs.cx != null && values.ContainsKey("cx"))
+                    inputs.cx.text = values["cx"].ToString();
+
+                if (inputs.cy != null && values.ContainsKey("cy"))
+                    inputs.cy.text = values["cy"].ToString();
+
+                if (inputs.width != null && values.ContainsKey("width"))
+                    inputs.width.text = values["width"].ToString();
+
+                if (inputs.height != null && values.ContainsKey("height"))
+                    inputs.height.text = values["height"].ToString();
             }
         }
 
         // Restore Extrinsics and ExtrinsicsNoise values
         foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
         {
-            if (groupInputs.ContainsKey(group))
+            if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))
             {
                 var inputs = groupInputs[group];
                 var values = groupValues[group];
 
-                if (inputs.x != null) inputs.x.text = values["x"].ToString();
-                if (inputs.y != null) inputs.y.text = values["y"].ToString();
-                if (inputs.z != null) inputs.z.text = values["z"].ToString();
-                if (inputs.rx != null) inputs.rx.text = values["rx"].ToString();
-                if (inputs.ry != null) inputs.ry.text = values["ry"].ToString();
-                if (inputs.rz != null) inputs.rz.text = values["rz"].ToString();
+                if (inputs.x != null && values.ContainsKey("x"))
+                    inputs.x.text = values["x"].ToString();
+
+                if (inputs.y != null && values.ContainsKey("y"))
+                    inputs.y.text = values["y"].ToString();
+
+                if (inputs.z != null && values.ContainsKey("z"))
+                    inputs.z.text = values["z"].ToString();
+
+                if (inputs.rx != null && values.ContainsKey("rx"))
+                    inputs.rx.text = values["rx"].ToString();
+
+                if (inputs.ry != null && values.ContainsKey("ry"))
+                    inputs.ry.text = values["ry"].ToString();
+
+                if (inputs.rz != null && values.ContainsKey("rz"))
+                    inputs.rz.text = values["rz"].ToString();
             }
         }
     }
@@ -498,7 +738,7 @@ public class MenuController : MonoBehaviour
         // Save to file
         try
         {
-            string path = Path.Combine(Application.dataPath, "this_is_my_config.json");
+            string path = Path.Combine(Application.dataPath, "..", "this_is_my_config.json");
             File.WriteAllText(path, rootNode.ToJSON(4)); // Using indent of 4 for pretty printing
             Debug.Log($"Configuration saved successfully to: {path}");
             Debug.Log($"JSON Content:\n{rootNode.ToJSON(4)}");

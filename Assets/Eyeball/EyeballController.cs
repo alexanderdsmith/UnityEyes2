@@ -112,15 +112,15 @@ public class EyeballController : MonoBehaviour {
             iris_middle += vertices[idx] / (float)iris_idxs.Length;
 
         // Debug: After calculation 
-        Debug.Log($"Calculated iris_middle (local): {iris_middle}");
-        Debug.Log($"World space iris: {transform.TransformPoint(iris_middle)}");
+        //Debug.Log($"Calculated iris_middle (local): {iris_middle}");
+        //Debug.Log($"World space iris: {transform.TransformPoint(iris_middle)}");
 
         Vector3 irisCameraSpace = Camera.main.transform.InverseTransformPoint(iris_middle);
-        Debug.Log($"Camera space iris: {irisCameraSpace}");
+        //Debug.Log($"Camera space iris: {irisCameraSpace}");
 
         Vector3 gazeVector = Camera.main.transform.worldToLocalMatrix * GetEyeLookVector();
-        Debug.Log($"Gaze vector (camera space): {gazeVector}");
-        Debug.DrawRay(iris_middle, gazeVector * 0.5f, Color.blue, 0.1f);
+        //Debug.Log($"Gaze vector (camera space): {gazeVector}");
+        //Debug.DrawRay(iris_middle, gazeVector * 0.5f, Color.blue, 0.1f);
 
         gazeNode.Add("iris_center", (irisCameraSpace).ToString("F4"));
         gazeNode.Add("gaze_vec", (Camera.main.transform.worldToLocalMatrix * GetEyeLookVector()).ToString("F4"));
@@ -138,3 +138,64 @@ public class EyeballController : MonoBehaviour {
         return cameraNode;
     }
 }
+
+
+
+//private void RestoreInputValues()
+//{
+//    // Restore Intrinsics and IntrinsicsNoise values
+//    foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
+//    {
+//        if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))
+//        {
+//            var inputs = groupInputs[group];
+//            var values = groupValues[group];
+
+//            if (inputs.fx != null && values.ContainsKey("fx"))
+//                inputs.fx.text = values["fx"].ToString();
+
+//            if (inputs.fy != null && values.ContainsKey("fy"))
+//                inputs.fy.text = values["fy"].ToString();
+
+//            if (inputs.cx != null && values.ContainsKey("cx"))
+//                inputs.cx.text = values["cx"].ToString();
+
+//            if (inputs.cy != null && values.ContainsKey("cy"))
+//                inputs.cy.text = values["cy"].ToString();
+
+//            if (inputs.width != null && values.ContainsKey("width"))
+//                inputs.width.text = values["width"].ToString();
+
+//            if (inputs.height != null && values.ContainsKey("height"))
+//                inputs.height.text = values["height"].ToString();
+//        }
+//    }
+
+//    // Restore Extrinsics and ExtrinsicsNoise values
+//    foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
+//    {
+//        if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))
+//        {
+//            var inputs = groupInputs[group];
+//            var values = groupValues[group];
+
+//            if (inputs.x != null && values.ContainsKey("x"))
+//                inputs.x.text = values["x"].ToString();
+
+//            if (inputs.y != null && values.ContainsKey("y"))
+//                inputs.y.text = values["y"].ToString();
+
+//            if (inputs.z != null && values.ContainsKey("z"))
+//                inputs.z.text = values["z"].ToString();
+
+//            if (inputs.rx != null && values.ContainsKey("rx"))
+//                inputs.rx.text = values["rx"].ToString();
+
+//            if (inputs.ry != null && values.ContainsKey("ry"))
+//                inputs.ry.text = values["ry"].ToString();
+
+//            if (inputs.rz != null && values.ContainsKey("rz"))
+//                inputs.rz.text = values["rz"].ToString();
+//        }
+//    }
+//}

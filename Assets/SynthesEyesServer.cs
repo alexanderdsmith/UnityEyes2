@@ -77,7 +77,8 @@ public class SynthesEyesServer : MonoBehaviour{
     // Camera management fields
     private List<Camera> cameraList = new List<Camera>();
     private int currentCameraIndex = 0;
-    public string jsonConfigPath = "camera_config.json";
+    //public string jsonConfigPath = "camera_config.json";
+    public string jsonConfigPath = "this_is_my_config.json";
 
     // should you save the data or not
     public bool isSavingData = false;
