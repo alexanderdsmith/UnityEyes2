@@ -108,6 +108,7 @@ public class SynthesEyesServer : MonoBehaviour{
         // Load cameras from JSON oe XML
         if (File.Exists(jsonConfigPath))
         {
+            Debug.Log($"-------------------- READ");
             LoadCamerasFromConfig(jsonConfigPath);
         }
         else if (File.Exists(xmlCameraFilePath))
@@ -146,7 +147,7 @@ public class SynthesEyesServer : MonoBehaviour{
     private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
     {
         cam.orthographic = config.is_orthographic;
-        cam.nearClipPlane = 0.3f;
+        cam.nearClipPlane = 0.3f; // test it out
         cam.farClipPlane = 1000f;
 
         if (config.is_orthographic)

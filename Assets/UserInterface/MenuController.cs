@@ -9,8 +9,8 @@ using TMPro;
 
 public class MenuController : MonoBehaviour
 {
-    [SerializeField] private GameObject settingsMenu;  // The "Settings Menu" GameObject in your Canvas
-    [SerializeField] private Button menuButton;        // The "Menu Button" that will open/close the dialog
+    [SerializeField] private GameObject settingsMenu;  
+    [SerializeField] private Button menuButton;        
     [SerializeField] private Button closeButton;
 
     // ---------------------------------------------------------
@@ -33,13 +33,15 @@ public class MenuController : MonoBehaviour
     // ---------------------------------------------------------
     //[Header("Camera Controls")]
     [Header("Camera Management")]
-    // [SerializeField] private Button addCameraButton;       // "+" button for adding cameras
-    // [SerializeField] private Button removeCameraButton;    // "-" button for removing cameras
+    [SerializeField] private Button addCameraButton;       
+    [SerializeField] private Button removeCameraButton;    
 
-    private int cameraCount = 1; // Tracks the number of cameras added (starts from 1 for Camera1)
+    private int cameraCount = 0; 
 
     [Header("Camera Parameter Groups")]
     [SerializeField] private GameObject cameraGroup;
+    [SerializeField] private RectTransform cameraContainer;
+    [SerializeField] private GameObject cameraGroupPrefab;
     [SerializeField] private RectTransform intrinsicsGroup;
     //[SerializeField] private InputField fxnput;
 
@@ -47,15 +49,13 @@ public class MenuController : MonoBehaviour
     [SerializeField] private Transform extrinsicsGroup;
     [SerializeField] private Transform extrinsicsNoiseGroup;
 
-    // Dictionary to store values for each group
     private Dictionary<string, Dictionary<string, float>> groupValues = new Dictionary<string, Dictionary<string, float>>();
 
-    // References to input fields for each group
     private class InputFieldRefs
     {
         // Change from InputField to TMP_InputField
-        public TMP_InputField fx, fy, cx, cy, width, height;    // For intrinsics groups
-        public TMP_InputField x, y, z, rx, ry, rz;             // For extrinsics groups
+        public TMP_InputField fx, fy, cx, cy, width, height;  
+        public TMP_InputField x, y, z, rx, ry, rz;         
     }
 
     private Dictionary<string, InputFieldRefs> groupInputs = new Dictionary<string, InputFieldRefs>();
@@ -75,9 +75,9 @@ public class MenuController : MonoBehaviour
     [SerializeField] private InputField intrinsicsPathField;
     [SerializeField] private InputField extrinsicsPathField;
 
-    [Header("Camera Controls")]
-    [SerializeField] private Button addCameraButton;      
-    [SerializeField] private Button removeCameraButton;    
+    //[Header("Camera Controls")]
+    //[SerializeField] private Button addCameraButton;      
+    //[SerializeField] private Button removeCameraButton;    
 
     // ---------------------------------------------------------
     // Parameter Distribution
@@ -135,24 +135,31 @@ public class MenuController : MonoBehaviour
     {
         settingsMenu = GameObject.Find("SettingsMenu"); // Find the GameObject by name
         cameraGroup = GameObject.Find("CameraGroup");
+
+        cameraContainer = GameObject.Find("CameraContainer").GetComponent<RectTransform>();
+
+        cameraGroupPrefab = Resources.Load<GameObject>("Prefabs/CameraGroup");
         // intrinsicsGroup = transform.Find("IntrinsicsGroup").GetComponent<RectTransform>();
 
-        menuButton = GameObject.Find("MenuButton").GetComponent<Button>(); // Find the Button component
+        menuButton = GameObject.Find("MenuButton").GetComponent<Button>(); 
         closeButton = GameObject.Find("ExitButton").GetComponent<Button>();
-        // addCameraButton = GameObject.Find("AddCamera").GetComponent<Button>();
-        // removeCameraButton = GameObject.Find("RemoveCamera").GetComponent<Button>();
+        addCameraButton = GameObject.Find("AddCamera").GetComponent<Button>();
+        removeCameraButton = GameObject.Find("RemoveCamera").GetComponent<Button>();
         saveButton = GameObject.Find("SaveButton").GetComponent<Button>();
 
-
+        if (cameraGroupPrefab == null)
+        {
+            Debug.LogError("Failed to load CameraGroup prefab. Please check that it exists at Assets/Resources/Prefabs/CameraGroup");
+            return;
+        }
+        
         InitializeCameraGroups();
 
-        // Ensure the Settings Menu is hidden initially
         if (settingsMenu != null)
         {
             settingsMenu.SetActive(false);
         }
 
-        // Hook up the button's onClick event to our ToggleMenu method
         if (menuButton != null)
         {
             menuButton.onClick.AddListener(ToggleMenu);
@@ -163,19 +170,27 @@ public class MenuController : MonoBehaviour
             closeButton.onClick.AddListener(CloseMenu);
         }
 
-        // Initialize camera buttons
-        //if (addcamerabutton != null)
-        //    addcamerabutton.onclick.addlistener(addcamera);
-        //if (removecamerabutton != null)
-        //    removeCameraButton.onClick.AddListener(RemoveCamera);
-
-        // Initialize save button
-        if (saveButton != null)
+        if (addCameraButton != null)
         {
-            Debug.Log("Pressed this button");
-            saveButton.onClick.AddListener(SaveConfiguration);
+            Debug.Log("Pressed Add Camera button");
+            addCameraButton.onClick.AddListener(AddCamera);
+        }
+        if (removeCameraButton != null)
+        {
+            Debug.Log("Pressed Remove Camera button");
+            removeCameraButton.onClick.AddListener(RemoveCamera);
         }
 
+        if (addedCameras.Count == 0)
+        {
+            AddCamera();
+        }
+
+        if (saveButton != null)
+        {
+            // Debug.Log("Pressed this button");
+            saveButton.onClick.AddListener(SaveConfiguration);
+        }
 
         // All listeners in the menu
         if (projectNameField != null)
@@ -235,11 +250,10 @@ public class MenuController : MonoBehaviour
 
 
 
-    // This method toggles the menu's active state
     private void ToggleMenu()
     {
-        isMenuOpen = !isMenuOpen;                  // flip the boolean
-        settingsMenu.SetActive(isMenuOpen);        // show/hide the menu
+        isMenuOpen = !isMenuOpen;                 
+        settingsMenu.SetActive(isMenuOpen);     
         if (isMenuOpen)
         {
             // Restore saved values when opening menu
@@ -249,22 +263,86 @@ public class MenuController : MonoBehaviour
 
     public void CloseMenu()
     {
-        Debug.Log("I'm Here");
+        // Debug.Log("I'm Here");
         isMenuOpen = false;
         settingsMenu.SetActive(false);
+    }
+
+    public void AddCamera()
+    {
+        LayoutRebuilder.ForceRebuildLayoutImmediate(cameraContainer);
+
+        if (cameraGroupPrefab == null)
+        {
+            Debug.LogError("CameraGroup prefab is null! Please assign it in the Inspector or make sure it exists in Resources/Prefabs.");
+            return;
+        }
+        // Increment camera count
+        cameraCount++;
+
+        GameObject newCameraGroup = Instantiate(cameraGroupPrefab, cameraContainer);
+        newCameraGroup.name = $"CameraGroup_{cameraCount}";
+
+        addedCameras.Add(newCameraGroup);
+
+        UpdateCameraLabels();
+
+        UpdateButtonStates();
+
+        Debug.Log($"Added camera group: {newCameraGroup.name}");
+    }
+
+    public void RemoveCamera()
+    {
+        if (addedCameras.Count <= 1)
+        {
+            Debug.Log("Cannot remove the last camera group");
+            return;
+        }
+
+        GameObject lastCamera = addedCameras[addedCameras.Count - 1];
+        addedCameras.RemoveAt(addedCameras.Count - 1);
+
+        Destroy(lastCamera);
+
+        cameraCount--;
+
+        UpdateCameraLabels();
+
+        UpdateButtonStates();
+
+        Debug.Log($"Removed camera group. Remaining: {addedCameras.Count}");
+    }
+
+    private void UpdateCameraLabels()
+    {
+        for (int i = 0; i < addedCameras.Count; i++)
+        {
+            Text cameraLabel = addedCameras[i].GetComponentInChildren<Text>();
+            if (cameraLabel != null)
+            {
+                cameraLabel.text = $"Camera {i}";
+            }
+        }
+    }
+
+    private void UpdateButtonStates()
+    {
+        if (removeCameraButton != null)
+        {
+            removeCameraButton.interactable = (addedCameras.Count > 1);
+        }
     }
 
     private void InitializeCameraGroups()
     {
         Debug.Log("Starting to initialize camera groups");
 
-        // Initialize dictionaries for each group
         groupValues["Intrinsics"] = new Dictionary<string, float>();
         groupValues["IntrinsicsNoise"] = new Dictionary<string, float>();
         groupValues["Extrinsics"] = new Dictionary<string, float>();
         groupValues["ExtrinsicsNoise"] = new Dictionary<string, float>();
 
-        // Find and initialize all four groups
         GameObject intrinsicsGroupObj = GameObject.Find("IntrinsicsGroup");
         if (intrinsicsGroupObj != null)
         {
@@ -313,7 +391,6 @@ public class MenuController : MonoBehaviour
             Debug.LogError("Cannot find ExtrinsicsNoiseGroup in the scene");
         }
 
-        // Initialize default values
         InitializeDefaultValues();
     }
 
@@ -321,10 +398,8 @@ public class MenuController : MonoBehaviour
     {
         Debug.Log($"Initializing {groupName} fields");
 
-        // Create a new entry in the groupInputs dictionary
         groupInputs[groupName] = new InputFieldRefs();
 
-        // Find the input fields directly by name from the children of IntrinsicsGroup
         Transform fxInput = FindChildByName(groupTransform, "fxInput");
         if (fxInput != null)
         {
@@ -337,7 +412,6 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Similarly set up the other input fields with the same pattern
         Transform fyInput = FindChildByName(groupTransform, "fyInput");
         if (fyInput != null)
         {
@@ -350,7 +424,6 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Continue with cx, cy, width, height
         Transform cxInput = FindChildByName(groupTransform, "cxInput");
         if (cxInput != null)
         {
@@ -404,11 +477,9 @@ public class MenuController : MonoBehaviour
     {
         Debug.Log($"Initializing {groupName} fields");
 
-        // Create a new entry in the groupInputs dictionary
         groupInputs[groupName] = new InputFieldRefs();
 
 
-        // Find the input fields directly by name from the children of ExtrinsicsGroup
         Transform xInput = FindChildByName(groupTransform, "xInput");
         if (xInput != null)
         {
@@ -491,7 +562,6 @@ public class MenuController : MonoBehaviour
 
     private Transform FindChildByName(Transform parent, string childName)
     {
-        // First try direct child
         Transform child = parent.Find(childName);
         if (child != null)
         {
@@ -499,7 +569,6 @@ public class MenuController : MonoBehaviour
             return child;
         }
 
-        // Output all child names for debugging
         string childrenNames = "";
         for (int i = 0; i < parent.childCount; i++)
         {
@@ -507,20 +576,17 @@ public class MenuController : MonoBehaviour
         }
         Debug.Log($"Children of {parent.name}: {childrenNames}");
 
-        // Loop through all children
         for (int i = 0; i < parent.childCount; i++)
         {
             Transform childTransform = parent.GetChild(i);
             Debug.Log($"Checking child: {childTransform.name}");
 
-            // Check if this child has the name we're looking for
             if (childTransform.name == childName)
             {
                 Debug.Log($"Found match: {childName}");
                 return childTransform;
             }
 
-            // Recursively search in this child's children
             Transform result = FindChildByName(childTransform, childName);
             if (result != null)
                 return result;
@@ -549,7 +615,6 @@ public class MenuController : MonoBehaviour
 
     private void InitializeDefaultValues()
     {
-        // Initialize Intrinsics and IntrinsicsNoise default values
         foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
         {
             groupValues[group]["fx"] = 0f;
@@ -560,7 +625,6 @@ public class MenuController : MonoBehaviour
             groupValues[group]["height"] = 0f;
         }
 
-        // Initialize Extrinsics and ExtrinsicsNoise default values
         foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
         {
             groupValues[group]["x"] = 0f;
@@ -576,34 +640,28 @@ public class MenuController : MonoBehaviour
     {
         Debug.Log($"OnValueChanged called for {groupName}.{fieldName} = {value}");
 
-        // Make sure the group exists
         if (!groupValues.ContainsKey(groupName))
         {
             Debug.LogError($"Group '{groupName}' not found in groupValues dictionary");
             groupValues[groupName] = new Dictionary<string, float>();
         }
 
-        // Make sure the field exists
         if (!groupValues[groupName].ContainsKey(fieldName))
         {
             Debug.Log($"Field '{fieldName}' not found in {groupName}, initializing to 0");
             groupValues[groupName][fieldName] = 0f;
         }
 
-        // Try to parse the value, defaulting to 0 if it fails
         if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float parsedValue))
         {
             Debug.LogWarning($"Could not parse '{value}' as float for {groupName}.{fieldName}, using 0");
             parsedValue = 0f;
         }
 
-        // Update the value in the dictionary
         groupValues[groupName][fieldName] = parsedValue;
 
-        // Log the update
         Debug.Log($"Updated {groupName}.{fieldName} to {parsedValue}");
 
-        // Log all values in this group
         Debug.Log($"Current values in {groupName}:");
         foreach (var pair in groupValues[groupName])
         {
@@ -614,7 +672,6 @@ public class MenuController : MonoBehaviour
 
     private void RestoreInputValues()
     {
-        // Restore Intrinsics and IntrinsicsNoise values
         foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
         {
             if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))
@@ -642,7 +699,6 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Restore Extrinsics and ExtrinsicsNoise values
         foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
         {
             if (groupInputs.ContainsKey(group) && groupValues.ContainsKey(group))

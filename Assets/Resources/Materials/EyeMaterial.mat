@@ -78,7 +78,7 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _PupilSize: -0.101027206
+    - _PupilSize: 0.07357554
     - _RefractiveIdx: 1.2
     - _SrcBlend: 1
     - _UVSec: 0
