@@ -1,47 +1,79 @@
-{
-  "cameras": [
-    {
-      "name": "camera_1",
-      "position": {
-        "x": 2.2,
-        "y": 2.2,
-        "z": 4.7
-      },
-      "rotation": {
-        "x": 155,
-        "y": 35,
-        "z": 225
-      },
+{ 
+  "outputPath": "~/data/", 
+  "outputFolder": "EER_eye_data", 
+  "num_samples": 10000, 
+  "cameras": [ 
+    { 
+      "name": "cam_1", 
+      "noise_distribution": "uniform", 
       "is_orthographic": false,
-      "intrinsics": {
-        "fx": 584.89,
-        "fy": 584.89,
-        "cx": 320,
-        "cy": 240,
-        "width": 640,
-        "height": 480
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 0, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": 2.2, 
+        "y": 2.2, 
+        "z": 4.7, 
+        "rx": 155, 
+        "ry": 35, 
+        "rz": 225
+      }, 
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 0, 
+        "ry": 0, 
+        "rz": 0
       }
     },
-    {
-      "name": "camera_3",
-      "position": {
-        "x": -2.2,
-        "y": 2.2,
-        "z": 4.7
-      },
-      "rotation": {
-        "x": 155,
-        "y": -35,
-        "z": -225
-      },
-      "is_orthographic": false,
-      "intrinsics": {
-        "fx": 584.89,
-        "fy": 584.89,
-        "cx": 320,
-        "cy": 240,
-        "width": 640,
-        "height": 480
+    { 
+      "name": "cam_2", 
+      "noise_distribution": "uniform", 
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 45, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": -2.2, 
+        "y": 2.2, 
+        "z": 4.7, 
+        "rx": 155, 
+        "ry": -35, 
+        "rz": -225
+      }, 
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
       }
     }
   ]

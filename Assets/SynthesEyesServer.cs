@@ -77,8 +77,7 @@ public class SynthesEyesServer : MonoBehaviour{
     // Camera management fields
     private List<Camera> cameraList = new List<Camera>();
     private int currentCameraIndex = 0;
-    //public string jsonConfigPath = "camera_config.json";
-    public string jsonConfigPath = "this_is_my_config.json";
+    public string jsonConfigPath = "camera_config.json";
 
     // should you save the data or not
     public bool isSavingData = false;
@@ -109,6 +108,7 @@ public class SynthesEyesServer : MonoBehaviour{
         if (File.Exists(jsonConfigPath))
         {
             Debug.Log($"-------------------- READ");
+
             LoadCamerasFromConfig(jsonConfigPath);
         }
         else if (File.Exists(xmlCameraFilePath))
@@ -118,36 +118,123 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
-    // Camera loading implementation
     private void LoadCamerasFromConfig(string configPath)
     {
         cameraList.Clear();
 
-        string jsonData = File.ReadAllText(configPath);
-        CameraConfiguration config = JsonUtility.FromJson<CameraConfiguration>(jsonData);
-
-        foreach (CameraConfig camConfig in config.cameras)
+        try
         {
-            GameObject camObj = new GameObject(camConfig.name);
-            Camera newCam = camObj.AddComponent<Camera>();
+            string jsonData = File.ReadAllText(configPath);
+            Debug.Log($"Reading config from: {configPath}");
 
-            camObj.transform.position = camConfig.position;
-            camObj.transform.eulerAngles = camConfig.rotation;
+            JSONNode rootNode = JSON.Parse(jsonData);
+            if (rootNode == null)
+            {
+                Debug.LogError("Failed to parse JSON config file");
+                return;
+            }
 
-            ConfigureCameraFromIntrinsics(newCam, camConfig);
+            JSONArray camerasArray = rootNode["cameras"].AsArray;
+            if (camerasArray == null)
+            {
+                Debug.LogError("No cameras array found in config");
+                return;
+            }
 
-            newCam.tag = cameraList.Count == 0 ? "MainCamera" : "Untagged";
-            newCam.enabled = (cameraList.Count == 0);
+            Debug.Log($"Found {camerasArray.Count} cameras");
 
-            cameraList.Add(newCam);
+
+            for (int i =0; i < camerasArray.Count; i++)
+            {
+                JSONNode camNode = camerasArray[i];
+
+                string cameraName= camNode["name"] != null ? camNode["name"].Value : $"Camera_{i}";
+                Debug.Log($"Processing camera: {cameraName}");
+
+                GameObject camObj = new GameObject(cameraName);
+                Camera newCam = camObj.AddComponent<Camera>();
+
+                JSONNode extrinsics = camNode["extrinsics"];
+                Vector3 position= Vector3.zero;
+                Vector3 rotation = Vector3.zero;
+
+                if (extrinsics != null)
+                {
+                    position = new Vector3(
+                        extrinsics["x"] != null? extrinsics["x"].AsFloat :0f,
+                        extrinsics["y"] != null? extrinsics["y"].AsFloat :0f,
+                        extrinsics["z"] != null? extrinsics["z"].AsFloat :0f
+                    );
+
+                    rotation = new Vector3(
+                        extrinsics["rx"] != null? extrinsics["rx"].AsFloat :0f,
+                        extrinsics["ry"] != null? extrinsics["ry"].AsFloat :0f,
+                        extrinsics["rz"] != null ?  extrinsics["rz"].AsFloat :0f
+                    );
+                }
+
+                camObj.transform.position= position;
+                camObj.transform.eulerAngles = rotation;
+
+                JSONNode intrinsics = camNode["intrinsics"];
+                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
+
+                CameraIntrinsics camIntrinsics = new CameraIntrinsics
+                {
+                    fx = 500f,
+                    fy = 500f,
+                    cx = 320f,
+                    cy = 240f,
+                    width = 640,
+                    height = 480
+                };
+
+                if (intrinsics != null)
+                {
+                    if (intrinsics["fx"] != null) camIntrinsics.fx = intrinsics["fx"].AsFloat;
+                    if (intrinsics["fy"] != null) camIntrinsics.fy = intrinsics["fy"].AsFloat;
+                    if (intrinsics["cx"] != null) camIntrinsics.cx = intrinsics["cx"].AsFloat;
+                    if (intrinsics["cy"] != null) camIntrinsics.cy = intrinsics["cy"].AsFloat;
+                    if (intrinsics["w"] != null) camIntrinsics.width = intrinsics["w"].AsInt;
+                    if (intrinsics["h"] != null) camIntrinsics.height = intrinsics["h"].AsInt;
+                }
+
+                CameraConfig config = new CameraConfig
+                {
+                    name = cameraName,
+                    position = position,
+                    rotation = rotation,
+                    is_orthographic = isOrthographic,
+                    intrinsics = camIntrinsics
+                };
+
+                ConfigureCameraFromIntrinsics(newCam, config);
+
+                newCam.tag = cameraList.Count == 0 ? "MainCamera" : "Untagged";
+                newCam.enabled = (cameraList.Count == 0);
+
+                cameraList.Add(newCam);
+                Debug.Log($"Added camera {cameraName} to list. Position: {position}, Rotation: {rotation}");
+            }
+
+
+            if (cameraList.Count > 0)
+            {
+                xmlBasePosition= cameraList[0].transform.position;
+                xmlBaseEulerAngles = cameraList[0].transform.eulerAngles;
+            }
+
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Error loading camera config: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // Camera configuration logic
     private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
     {
         cam.orthographic = config.is_orthographic;
-        cam.nearClipPlane = 0.3f; // test it out
+        cam.nearClipPlane = 0.3f; 
         cam.farClipPlane = 1000f;
 
         if (config.is_orthographic)
