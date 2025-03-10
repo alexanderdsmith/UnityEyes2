@@ -15,8 +15,10 @@ public class ButtonSaveImages : MonoBehaviour {
         buttonInput.onClick.AddListener(StartSavingData);
 
     }
-	
-	void StartSavingData() {
+
+    void StartSavingData()
+    {
+        synthesEyesServer.ResetFrameCounter();
         synthesEyesServer.isSavingData = true;
 
         GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled = false;

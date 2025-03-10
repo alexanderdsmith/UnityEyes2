@@ -17,6 +17,8 @@ public class CameraIntrinsics{
     public float cy;
     public int width;
     public int height;
+    public float sensor_width;
+    public float sensor_height;
 }
 
 [System.Serializable]
@@ -79,6 +81,8 @@ public class SynthesEyesServer : MonoBehaviour{
     private int currentCameraIndex = 0;
     public string jsonConfigPath = "camera_config.json";
 
+    private int maxSamplesToSave = 10000;
+
     // should you save the data or not
     public bool isSavingData = false;
 
@@ -134,6 +138,12 @@ public class SynthesEyesServer : MonoBehaviour{
                 return;
             }
 
+            if (rootNode["num_samples"] != null)
+            {
+                maxSamplesToSave = rootNode["num_samples"].AsInt;
+                Debug.Log($"Will save a maximum of {maxSamplesToSave} images");
+            }
+
             JSONArray camerasArray = rootNode["cameras"].AsArray;
             if (camerasArray == null)
             {
@@ -151,6 +161,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 string cameraName= camNode["name"] != null ? camNode["name"].Value : $"Camera_{i}";
                 Debug.Log($"Processing camera: {cameraName}");
 
+
                 GameObject camObj = new GameObject(cameraName);
                 Camera newCam = camObj.AddComponent<Camera>();
 
@@ -161,19 +172,19 @@ public class SynthesEyesServer : MonoBehaviour{
                 if (extrinsics != null)
                 {
                     position = new Vector3(
-                        extrinsics["x"] != null? extrinsics["x"].AsFloat :0f,
-                        extrinsics["y"] != null? extrinsics["y"].AsFloat :0f,
-                        extrinsics["z"] != null? extrinsics["z"].AsFloat :0f
+                        extrinsics["x"] != null? extrinsics["x"].AsFloat : 0f,
+                        extrinsics["y"] != null? extrinsics["y"].AsFloat : 0f,
+                        extrinsics["z"] != null? extrinsics["z"].AsFloat : 0f
                     );
 
                     rotation = new Vector3(
-                        extrinsics["rx"] != null? extrinsics["rx"].AsFloat :0f,
-                        extrinsics["ry"] != null? extrinsics["ry"].AsFloat :0f,
-                        extrinsics["rz"] != null ?  extrinsics["rz"].AsFloat :0f
+                        extrinsics["rx"] != null ? extrinsics["rx"].AsFloat : 0f,
+                        extrinsics["ry"] != null ? extrinsics["ry"].AsFloat : 0f,
+                        extrinsics["rz"] != null ? extrinsics["rz"].AsFloat : 0f
                     );
                 }
 
-                camObj.transform.position= position;
+                camObj.transform.position = position;
                 camObj.transform.eulerAngles = rotation;
 
                 JSONNode intrinsics = camNode["intrinsics"];
@@ -197,6 +208,12 @@ public class SynthesEyesServer : MonoBehaviour{
                     if (intrinsics["cy"] != null) camIntrinsics.cy = intrinsics["cy"].AsFloat;
                     if (intrinsics["w"] != null) camIntrinsics.width = intrinsics["w"].AsInt;
                     if (intrinsics["h"] != null) camIntrinsics.height = intrinsics["h"].AsInt;
+
+                    if (intrinsics["sensor_width"] != null) camIntrinsics.sensor_width = intrinsics["sensor_width"].AsFloat;
+                    else camIntrinsics.sensor_width = 36f;
+
+                    if (intrinsics["sensor_height"] != null) camIntrinsics.sensor_height = intrinsics["sensor_height"].AsFloat;
+                    else camIntrinsics.sensor_height = 24f;
                 }
 
                 CameraConfig config = new CameraConfig
@@ -220,7 +237,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
             if (cameraList.Count > 0)
             {
-                xmlBasePosition= cameraList[0].transform.position;
+                xmlBasePosition = cameraList[0].transform.position;
                 xmlBaseEulerAngles = cameraList[0].transform.eulerAngles;
             }
 
@@ -248,8 +265,8 @@ public class SynthesEyesServer : MonoBehaviour{
 
             cam.usePhysicalProperties = true;
             cam.sensorSize = new Vector2(
-                config.intrinsics.width / config.intrinsics.fx * 36f,
-                config.intrinsics.height / config.intrinsics.fy * 24f
+                config.intrinsics.width / config.intrinsics.fx * config.intrinsics.sensor_width,
+                config.intrinsics.height / config.intrinsics.fy * config.intrinsics.sensor_height
             );
         }
     }
@@ -369,6 +386,15 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private IEnumerator saveFrame()
     {
+        // Check if we've reached the maximum number of samples
+        if (framesSaved >= maxSamplesToSave)
+        {
+            Debug.Log($"Maximum number of samples ({maxSamplesToSave}) reached. Stopping data collection.");
+            isSavingData = false;
+            GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled = true;
+            yield break;
+        }
+
         framesSaved++;
         // Wait until the end of frame so that the screen buffer is ready
         yield return new WaitForEndOfFrame();
@@ -384,6 +410,12 @@ public class SynthesEyesServer : MonoBehaviour{
 
         saveDetails(framesSaved);
         Object.Destroy(tex);
+    }
+
+    public void ResetFrameCounter()
+    {
+        framesSaved = 0;
+        Debug.Log("Frame counter reset. Ready to collect new samples.");
     }
 
     private void saveDetails(int frame)

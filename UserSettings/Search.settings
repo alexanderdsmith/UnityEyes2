@@ -1,7 +1,7 @@
 trackSelection = true
 refreshSearchWindowsInPlayMode = false
 pickerAdvancedUI = false
-"fetchPreview": true
+fetchPreview = true
 defaultFlags = 0
 keepOpen = true
 queryFolder = "Assets"
@@ -13,6 +13,9 @@ scopes = {
 	"picker_visibility_flags.075BCD15" = "264"
 	"picker_item_size.075BCD15" = "96"
 	"picker_inspector.075BCD15" = "0"
+	"last_search.66F56946" = "StartButton"
+	"OpenInspectorPreview.66F56946" = "0"
+	"currentGroup.66F56946" = null
 }
 providers = {
 	asset = {
@@ -69,6 +72,7 @@ providers = {
 objectSelectors = {
 }
 recentSearches = [
+	"StartButton"
 ]
 searchItemFavorites = [
 ]

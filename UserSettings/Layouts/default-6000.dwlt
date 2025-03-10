@@ -43,8 +43,8 @@ MonoBehaviour:
     y: 156
     width: 937
     height: 256
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 202, y: 226}
+  m_MaxSize: {x: 4002, y: 4026}
   m_ActualView: {fileID: 21}
   m_Panes:
   - {fileID: 21}
@@ -271,8 +271,8 @@ MonoBehaviour:
     y: 0
     width: 937
     height: 156
-  m_MinSize: {x: 200, y: 200}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 202, y: 226}
+  m_MaxSize: {x: 4002, y: 4026}
   m_ActualView: {fileID: 17}
   m_Panes:
   - {fileID: 17}
@@ -324,8 +324,8 @@ MonoBehaviour:
     y: 0
     width: 385
     height: 903
-  m_MinSize: {x: 275, y: 50}
-  m_MaxSize: {x: 4000, y: 4000}
+  m_MinSize: {x: 276, y: 76}
+  m_MaxSize: {x: 4001, y: 4026}
   m_ActualView: {fileID: 20}
   m_Panes:
   - {fileID: 20}
@@ -446,7 +446,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 79
+    y: 24
     width: 357
     height: 386
   m_SerializedDataModeController:
@@ -512,8 +512,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 358
-    y: 79
+    x: 1
+    y: 24
     width: 935
     height: 130
   m_SerializedDataModeController:
@@ -1064,7 +1064,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: -0.013922382, y: 0.9769103, z: 0.067211464, w: 0.2024078}
     speed: 2
-    m_Value: {x: -0.0139221465, y: 0.9768938, z: 0.067210324, w: 0.20240438}
+    m_Value: {x: -0.013922382, y: 0.9769103, z: 0.067211464, w: 0.2024078}
   m_Size:
     m_Target: 12.124355
     speed: 2
@@ -1279,7 +1279,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 491
+    y: 436
     width: 1294
     height: 465
   m_SerializedDataModeController:
@@ -1315,8 +1315,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1295
-    y: 79
+    x: 1296
+    y: 24
     width: 384
     height: 877
   m_SerializedDataModeController:
@@ -1365,8 +1365,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Game\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 358
-    y: 235
+    x: 1
+    y: 180
     width: 935
     height: 230
   m_SerializedDataModeController:
