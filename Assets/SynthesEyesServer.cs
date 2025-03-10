@@ -83,6 +83,21 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private int maxSamplesToSave = 10000;
 
+    // Motion Center Feature
+    private bool useMotionCenter = true;
+    private Vector3 cameraArrayCenter = Vector3.zero;
+    private Vector3 cameraArrayRotation = Vector3.zero;
+    private Vector3 cameraArrayPositionNoise = Vector3.zero;
+    private Vector3 cameraArrayRotationNoise = Vector3.zero;
+    private GameObject cameraParent;
+    private List<Vector3> cameraOriginalPositions = new List<Vector3>();
+    private List<Vector3> cameraOriginalRotations = new List<Vector3>();
+
+    private List<CameraIntrinsics> cameraOriginalIntrinsics = new List<CameraIntrinsics>();
+
+    // Headless Mode
+    private bool headlessMode = false;
+
     // should you save the data or not
     public bool isSavingData = false;
 
@@ -142,6 +157,48 @@ public class SynthesEyesServer : MonoBehaviour{
             {
                 maxSamplesToSave = rootNode["num_samples"].AsInt;
                 Debug.Log($"Will save a maximum of {maxSamplesToSave} images");
+            }
+
+            if (rootNode["motion_center"] != null)
+            {
+                useMotionCenter = rootNode["motion_center"].AsBool;
+                Debug.Log($"Motion center mode: {useMotionCenter}");
+            }
+
+            if (rootNode["camera_array_center"] != null)
+            {
+                JSONNode centerNode = rootNode["camera_array_center"];
+                cameraArrayCenter = new Vector3(
+                    centerNode["x"] != null ? centerNode["x"].AsFloat : 0f,
+                    centerNode["y"] != null ? centerNode["y"].AsFloat : 0f,
+                    centerNode["z"] != null ? centerNode["z"].AsFloat : 0f
+                );
+                cameraArrayRotation = new Vector3(
+                    centerNode["rx"] != null ? centerNode["rx"].AsFloat : 0f,
+                    centerNode["ry"] != null ? centerNode["ry"].AsFloat : 0f,
+                    centerNode["rz"] != null ? centerNode["rz"].AsFloat : 0f
+                );
+            }
+
+            if (rootNode["camera_array_noise"] != null)
+            {
+                JSONNode noiseNode = rootNode["camera_array_noise"];
+                cameraArrayPositionNoise = new Vector3(
+                    noiseNode["x"] != null ? noiseNode["x"].AsFloat : 0f,
+                    noiseNode["y"] != null ? noiseNode["y"].AsFloat : 0f,
+                    noiseNode["z"] != null ? noiseNode["z"].AsFloat : 0f
+                );
+                cameraArrayRotationNoise = new Vector3(
+                    noiseNode["rx"] != null ? noiseNode["rx"].AsFloat : 0f,
+                    noiseNode["ry"] != null ? noiseNode["ry"].AsFloat : 0f,
+                    noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
+                );
+            }
+
+            if (rootNode["headless_mode"] != null)
+            {
+                headlessMode = rootNode["headless_mode"].AsBool;
+                Debug.Log($"Headless mode: {headlessMode}");
             }
 
             JSONArray camerasArray = rootNode["cameras"].AsArray;
@@ -225,13 +282,45 @@ public class SynthesEyesServer : MonoBehaviour{
                     intrinsics = camIntrinsics
                 };
 
+                cameraOriginalIntrinsics.Add(new CameraIntrinsics
+                {
+                    fx = camIntrinsics.fx,
+                    fy = camIntrinsics.fy,
+                    cx = camIntrinsics.cx,
+                    cy = camIntrinsics.cy,
+                    width = camIntrinsics.width,
+                    height = camIntrinsics.height,
+                    sensor_width = camIntrinsics.sensor_width,
+                    sensor_height = camIntrinsics.sensor_height
+                });
+
                 ConfigureCameraFromIntrinsics(newCam, config);
 
                 newCam.tag = cameraList.Count == 0 ? "MainCamera" : "Untagged";
                 newCam.enabled = (cameraList.Count == 0);
 
                 cameraList.Add(newCam);
+                cameraOriginalPositions.Add(position);
+                cameraOriginalRotations.Add(rotation);
+
                 Debug.Log($"Added camera {cameraName} to list. Position: {position}, Rotation: {rotation}");
+            }
+
+            if (useMotionCenter)
+            {
+                cameraParent = new GameObject("CameraArrayParent");
+                cameraParent.transform.position = cameraArrayCenter;
+                cameraParent.transform.eulerAngles = cameraArrayRotation;
+
+                foreach (Camera cam in cameraList)
+                {
+                    Vector3 relativePosition = cam.transform.position - cameraArrayCenter;
+                    Vector3 relativeRotation = cam.transform.eulerAngles - cameraArrayRotation;
+
+                    cam.transform.parent = cameraParent.transform;
+                    cam.transform.localPosition = relativePosition;
+                    cam.transform.localEulerAngles = relativeRotation;
+                }
             }
 
 
@@ -271,6 +360,14 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+    private float GetRandomOffset(float range)
+    {
+        if (range <= 0) return 0;
+
+        float offset = (float)SyntheseyesUtils.NextGaussianDouble() * (range / 2f);
+        return Mathf.Clamp(offset, -range, range);
+    }
+
     void RandomizeScene()
     {
         // Record the start time on the first call
@@ -291,32 +388,54 @@ public class SynthesEyesServer : MonoBehaviour{
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
                                  Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
 
+        if (useMotionCenter)
+        {
 
-        // Sample offsets using NextGaussianDouble(), then clamp to ± random*Range
-        float offsetX = (float)SyntheseyesUtils.NextGaussianDouble() * (randomXRange / 2f);
-        offsetX = Mathf.Clamp(offsetX, -randomXRange, randomXRange);
+            float offsetX = GetRandomOffset(cameraArrayPositionNoise.x);
+            float offsetY = GetRandomOffset(cameraArrayPositionNoise.y);
+            float offsetZ = GetRandomOffset(cameraArrayPositionNoise.z);
+            float offsetPitch = GetRandomOffset(cameraArrayRotationNoise.x);
+            float offsetYaw = GetRandomOffset(cameraArrayRotationNoise.y);
+            float offsetRoll = GetRandomOffset(cameraArrayRotationNoise.z);
 
-        float offsetY = (float)SyntheseyesUtils.NextGaussianDouble() * (randomYRange / 2f);
-        offsetY = Mathf.Clamp(offsetY, -randomYRange, randomYRange);
+            cameraParent.transform.position = cameraArrayCenter + new Vector3(offsetX, offsetY, offsetZ);
+            cameraParent.transform.eulerAngles = cameraArrayRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+        }
+        else
+        {
 
-        float offsetZ = (float)SyntheseyesUtils.NextGaussianDouble() * (randomZRange / 2f);
-        offsetZ = Mathf.Clamp(offsetZ, -randomZRange, randomZRange);
+            Camera currentCam = cameraList[currentCameraIndex];
 
-        float offsetPitch = (float)SyntheseyesUtils.NextGaussianDouble() * (randomPitchRange / 2f);
-        offsetPitch = Mathf.Clamp(offsetPitch, -randomPitchRange, randomPitchRange);
+            Vector3 originalPosition = cameraOriginalPositions[currentCameraIndex];
+            Vector3 originalRotation = cameraOriginalRotations[currentCameraIndex];
 
-        float offsetYaw = (float)SyntheseyesUtils.NextGaussianDouble() * (randomYawRange / 2f);
-        offsetYaw = Mathf.Clamp(offsetYaw, -randomYawRange, randomYawRange);
+            JSONNode camerasArray = JSON.Parse(File.ReadAllText(jsonConfigPath))["cameras"].AsArray;
+            JSONNode camNode = camerasArray[currentCameraIndex];
+            JSONNode extrinsicsNoise = camNode["extrinsics_noise"];
+            JSONNode intrinsicsNoise = camNode["intrinsics_noise"];
 
-        float offsetRoll = (float)SyntheseyesUtils.NextGaussianDouble() * (randomRollRange / 2f);
-        offsetRoll = Mathf.Clamp(offsetRoll, -randomRollRange, randomRollRange);
+            Vector3 positionNoise = new Vector3(
+                extrinsicsNoise["x"] != null ? extrinsicsNoise["x"].AsFloat : 0f,
+                extrinsicsNoise["y"] != null ? extrinsicsNoise["y"].AsFloat : 0f,
+                extrinsicsNoise["z"] != null ? extrinsicsNoise["z"].AsFloat : 0f
+            );
 
-        // Get current active camera
-        Camera currentCam = cameraList[currentCameraIndex];
+            Vector3 rotationNoise = new Vector3(
+                extrinsicsNoise["rx"] != null ? extrinsicsNoise["rx"].AsFloat : 0f,
+                extrinsicsNoise["ry"] != null ? extrinsicsNoise["ry"].AsFloat : 0f,
+                extrinsicsNoise["rz"] != null ? extrinsicsNoise["rz"].AsFloat : 0f
+            );
 
-        // Apply offsets to active camera
-        currentCam.transform.position = xmlBasePosition + new Vector3(offsetX, offsetY, offsetZ);
-        currentCam.transform.eulerAngles = xmlBaseEulerAngles + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+            float offsetX = GetRandomOffset(positionNoise.x);
+            float offsetY = GetRandomOffset(positionNoise.y);
+            float offsetZ = GetRandomOffset(positionNoise.z);
+            float offsetPitch = GetRandomOffset(rotationNoise.x);
+            float offsetYaw = GetRandomOffset(rotationNoise.y);
+            float offsetRoll = GetRandomOffset(rotationNoise.z);
+
+            currentCam.transform.position = originalPosition + new Vector3(offsetX, offsetY, offsetZ);
+            currentCam.transform.eulerAngles = originalRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+        }
     }
 
     void Update()
@@ -384,6 +503,15 @@ public class SynthesEyesServer : MonoBehaviour{
         return new Vector3(jN[0].AsFloat, jN[1].AsFloat, jN[2].AsFloat);
     }
 
+    private void EnsureDirectoryExists(string path)
+    {
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+            Debug.Log($"Created directory: {path}");
+        }
+    }
+
     private IEnumerator saveFrame()
     {
         // Check if we've reached the maximum number of samples
@@ -396,20 +524,63 @@ public class SynthesEyesServer : MonoBehaviour{
         }
 
         framesSaved++;
-        // Wait until the end of frame so that the screen buffer is ready
-        yield return new WaitForEndOfFrame();
 
-        int width = Screen.width;
-        int height = Screen.height;
-        Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
-        tex.ReadPixels(new Rect(0, 0, width, height), 0, 0);
-        tex.Apply();
+        EnsureDirectoryExists("imgs");
 
-        byte[] imgBytes = tex.EncodeToJPG();
-        File.WriteAllBytes(string.Format("imgs/{0}.jpg", framesSaved), imgBytes);
+        if (!headlessMode)
+        {
+            yield return new WaitForEndOfFrame();
+        }
 
-        saveDetails(framesSaved);
-        Object.Destroy(tex);
+        int originalCameraIndex = currentCameraIndex;
+
+        for (int i = 0; i < cameraList.Count; i++)
+        {
+            Camera cam = cameraList[i];
+            string cameraName = cam.gameObject.name;
+
+            if (!headlessMode)
+            {
+                SwitchCamera(i - currentCameraIndex);
+                yield return new WaitForEndOfFrame();
+            }
+
+            RenderTexture renderTexture = RenderTexture.GetTemporary(
+                cam.pixelWidth,
+                cam.pixelHeight,
+                24,
+                RenderTextureFormat.ARGB32);
+
+            RenderTexture originalRenderTexture = cam.targetTexture;
+            cam.targetTexture = renderTexture;
+            cam.Render();
+
+            Texture2D tex = new Texture2D(cam.pixelWidth, cam.pixelHeight, TextureFormat.RGB24, false);
+            RenderTexture.active = renderTexture;
+            tex.ReadPixels(new Rect(0, 0, cam.pixelWidth, cam.pixelHeight), 0, 0);
+            tex.Apply();
+
+            cam.targetTexture = originalRenderTexture;
+            RenderTexture.active = null;
+
+            // Save the image with the appropriate name
+            byte[] imgBytes = tex.EncodeToJPG();
+            string fileName = string.Format("imgs/{0}_{1}.jpg", framesSaved, cameraName);
+            File.WriteAllBytes(fileName, imgBytes);
+
+            // Save details for this camera
+            // saveDetails(framesSaved, i);
+
+            RenderTexture.ReleaseTemporary(renderTexture);
+            Object.Destroy(tex);
+        }
+
+        // Restore the original camera if not in headless mode
+        if (!headlessMode)
+        {
+            // Restore the original active camera
+            SwitchCamera(originalCameraIndex - currentCameraIndex);
+        }
     }
 
     public void ResetFrameCounter()
@@ -473,13 +644,10 @@ public class SynthesEyesServer : MonoBehaviour{
         XMLCamera xmlCam = serializer.Deserialize(stream) as XMLCamera;
         stream.Close();
 
-        // Log: Start loading camera settings
         Debug.Log("Loading camera settings from XML file: " + file);
 
-        // Apply resolution settings
         if (xmlCam.Resolution.x > Screen.width || xmlCam.Resolution.y > Screen.height)
         {
-            // Optionally, you could set up a RenderTexture here.
             Debug.Log($"Resolution exceeds screen dimensions. Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
         }
         else
@@ -488,7 +656,6 @@ public class SynthesEyesServer : MonoBehaviour{
             Debug.Log($"Resolution set to Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
         }
 
-        // Set intrinsic camera parameters
         Camera.main.nearClipPlane = xmlCam.Near;
         Camera.main.farClipPlane = xmlCam.Far;
         Camera.main.orthographicSize = xmlCam.OrthographicSize;
@@ -528,18 +695,16 @@ public class SynthesEyesServer : MonoBehaviour{
             Debug.Log(xmlCam.ProjectionMatrix.ToString());
         }
 
-        // Apply extrinsic parameters
+
         Camera.main.transform.position = xmlCam.Position;
         Camera.main.transform.rotation = Quaternion.Euler(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
 
-        // Save the base transform for later randomization
         xmlBasePosition = xmlCam.Position;
         xmlBaseEulerAngles = new Vector3(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
 
         Debug.Log($"Position: X={xmlCam.Position.x}, Y={xmlCam.Position.y}, Z={xmlCam.Position.z}");
         Debug.Log($"Rotation (Pitch, Yaw, Roll): Pitch={xmlCam.Pitch}, Yaw={xmlCam.Yaw}, Roll={xmlCam.Roll}");
 
-        // Log: Finished loading camera settings
         Debug.Log("Finished applying camera settings from XML.");
     }
 

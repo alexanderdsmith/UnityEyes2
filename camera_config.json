@@ -2,9 +2,10 @@
   "outputPath": "~/data/", 
   "outputFolder": "EER_eye_data", 
   "num_samples": 100,
+  "headless_mode": true,
   "motion_center": true, 
   "camera_array_center": {
-    "x": 0,
+    "x": 1,
     "y": 0,
     "z": 0,
     "rx": 0,
