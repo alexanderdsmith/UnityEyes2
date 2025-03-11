@@ -568,12 +568,12 @@ public class SynthesEyesServer : MonoBehaviour{
             string fileName = string.Format("imgs/{0}_{1}.jpg", framesSaved, cameraName);
             File.WriteAllBytes(fileName, imgBytes);
 
-            // Save details for this camera
-            // saveDetails(framesSaved, i);
-
             RenderTexture.ReleaseTemporary(renderTexture);
             Object.Destroy(tex);
         }
+
+        // Save details for this camera
+        saveAllCamerasDetails(framesSaved);
 
         // Restore the original camera if not in headless mode
         if (!headlessMode)
@@ -589,48 +589,58 @@ public class SynthesEyesServer : MonoBehaviour{
         Debug.Log("Frame counter reset. Ready to collect new samples.");
     }
 
-    private void saveDetails(int frame)
+    private void saveAllCamerasDetails(int frame)
     {
-        Camera activeCam = cameraList[currentCameraIndex];
-
-        Mesh meshEyeRegion = eyeRegion.transform.GetComponent<MeshFilter>().mesh;
-        Mesh meshEyeBall = eyeball.transform.GetComponent<MeshFilter>().mesh;
+        EnsureDirectoryExists("imgs");
 
         JSONNode rootNode = new JSONClass();
-
-        JSONArray listInteriorMargin2D = new JSONArray();
-        rootNode.Add("interior_margin_2d", listInteriorMargin2D);
-        foreach (var idx in EyeRegionTopology.interior_margin_idxs)
-        {
-            Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-            listInteriorMargin2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString("F4")));
-        }
-
-        JSONArray listCaruncle2D = new JSONArray();
-        rootNode.Add("caruncle_2d", listCaruncle2D);
-        foreach (var idx in EyeRegionTopology.caruncle_idxs)
-        {
-            Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-            listCaruncle2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString("F4")));
-        }
-
-
-        JSONArray listIris2D = new JSONArray();
-        rootNode.Add("iris_2d", listIris2D);
-        foreach (var idx in EyeRegionTopology.iris_idxs)
-        {
-            Vector3 v_3d = eyeball.transform.localToWorldMatrix * meshEyeBall.vertices[idx];
-            listIris2D.Add(new JSONData(Camera.main.WorldToScreenPoint(v_3d).ToString("F4")));
-        }
 
         rootNode.Add("eye_details", eyeball.GetEyeballDetails());
         rootNode.Add("lighting_details", lightingController.GetLightingDetails());
         rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
-        rootNode.Add("head_pose", (Camera.main.transform.rotation.eulerAngles.ToString("F4")));
-        
-        // New saving method for optical axis and 3D position in space
-        rootNode.Add("ground_truth", (eyeball.GetGazeVector()));
-        rootNode.Add("camera_pose", (eyeball.GetCameratoEyeCenterPose()));
+
+        JSONNode camerasNode = new JSONClass();
+        rootNode.Add("cameras", camerasNode);
+
+        Mesh meshEyeRegion = eyeRegion.transform.GetComponent<MeshFilter>().mesh;
+        Mesh meshEyeBall = eyeball.transform.GetComponent<MeshFilter>().mesh;
+
+        for (int i = 0; i < cameraList.Count; i++)
+        {
+            Camera cam = cameraList[i];
+            string cameraName = cam.gameObject.name;
+            JSONNode cameraNode = new JSONClass();
+            camerasNode.Add(cameraName, cameraNode);
+
+            cameraNode.Add("head_pose", cam.transform.rotation.eulerAngles.ToString("F4"));
+            cameraNode.Add("camera_pose", eyeball.GetCameratoEyeCenterPose());
+
+            JSONArray listInteriorMargin2D = new JSONArray();
+            cameraNode.Add("interior_margin_2d", listInteriorMargin2D);
+            foreach (var idx in EyeRegionTopology.interior_margin_idxs)
+            {
+                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+                listInteriorMargin2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            }
+
+            JSONArray listCaruncle2D = new JSONArray();
+            cameraNode.Add("caruncle_2d", listCaruncle2D);
+            foreach (var idx in EyeRegionTopology.caruncle_idxs)
+            {
+                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+                listCaruncle2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            }
+
+            JSONArray listIris2D = new JSONArray();
+            cameraNode.Add("iris_2d", listIris2D);
+            foreach (var idx in EyeRegionTopology.iris_idxs)
+            {
+                Vector3 v_3d = eyeball.transform.localToWorldMatrix * meshEyeBall.vertices[idx];
+                listIris2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            }
+
+            cameraNode.Add("ground_truth", eyeball.GetGazeVector());
+        }
 
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
