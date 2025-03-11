@@ -1,6 +1,5 @@
 { 
-  "outputPath": "~/data/", 
-  "outputFolder": "EER_eye_data", 
+  "output_path": "~/data/imgs",
   "num_samples": 100,
   "headless_mode": true,
   "motion_center": true, 
@@ -13,12 +12,12 @@
     "rz": 0
   },
   "camera_array_noise": { 
-    "x": 0,
-    "y": 0,
-    "z": 0,
-    "rx": 0,
-    "ry": 0,
-    "rz": 0
+    "x": 0.01,
+    "y": 0.01,
+    "z": 0.01,
+    "rx": 1,
+    "ry": 1,
+    "rz": 30
   },
   "cameras": [ 
     { 

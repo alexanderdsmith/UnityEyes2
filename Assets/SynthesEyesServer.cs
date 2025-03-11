@@ -136,8 +136,6 @@ public class SynthesEyesServer : MonoBehaviour{
         // Load cameras from JSON
         if (File.Exists(jsonConfigPath))
         {
-            Debug.Log($"-------------------- READ");
-
             LoadCamerasFromConfig(jsonConfigPath);
         }
 
@@ -208,6 +206,8 @@ public class SynthesEyesServer : MonoBehaviour{
                     arrayRotation.y,                  // Keep Y rotation
                     -arrayRotation.z                  // Invert Z rotation
                 );
+                Debug.Log("Camera array center: " + cameraArrayCenter);
+                Debug.Log("Camera array rotation: " + cameraArrayRotation);
             }
 
             if (rootNode["camera_array_noise"] != null)
@@ -227,19 +227,19 @@ public class SynthesEyesServer : MonoBehaviour{
                     noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
                 );
                 
-                // Convert position noise from right-handed meters to left-handed centimeters
                 cameraArrayPositionNoise = new Vector3(
                     positionNoise.x * 100f,           // Scale to cm
                     -positionNoise.y * 100f,          // Invert Y and scale to cm
                     positionNoise.z * 100f            // Scale to cm
                 );
                 
-                // Convert rotation noise from right-handed to left-handed coordinate system
                 cameraArrayRotationNoise = new Vector3(
                     -rotationNoise.x,                 // Invert X rotation
                     rotationNoise.y,                  // Keep Y rotation
                     -rotationNoise.z                  // Invert Z rotation
                 );
+                Debug.Log("Camera array center noise: " + cameraArrayPositionNoise);
+                Debug.Log("Camera array rotation noise: " + cameraArrayRotationNoise);
             }
 
             if (rootNode["headless_mode"] != null)
@@ -381,6 +381,9 @@ public class SynthesEyesServer : MonoBehaviour{
                     // Set the world position/rotation
                     cam.transform.position = desiredWorldPosition;
                     cam.transform.rotation = desiredWorldRotation;
+
+                    // Parent the camera to the cameraParent
+                    cam.transform.parent = cameraParent.transform;
                 }
             }
 
@@ -426,7 +429,9 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private float GetRandomOffset(float range)
     {
-        if (range <= 0) return 0;
+        if (range == 0) return 0;
+
+        range = Mathf.Abs(range);
 
         float offset = (float)SyntheseyesUtils.NextGaussianDouble() * (range / 2f);
         return Mathf.Clamp(offset, -range, range);
@@ -443,11 +448,11 @@ public class SynthesEyesServer : MonoBehaviour{
 
 
         // After 100 calls, log the elapsed time
-        if (randomizeSceneCallCount == 1000)
-        {
-            float elapsedTime = Time.time - randomizeSceneStartTime;
-            Debug.Log($"RandomizeScene was called 100 times. Elapsed time: {elapsedTime:F2} seconds");
-        }
+        // if (randomizeSceneCallCount == 1000)
+        // {
+        //     float elapsedTime = Time.time - randomizeSceneStartTime;
+        //     Debug.Log($"RandomizeScene was called 100 times. Elapsed time: {elapsedTime:F2} seconds");
+        // }
         // Randomize eye rotation
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
                                  Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
@@ -464,6 +469,8 @@ public class SynthesEyesServer : MonoBehaviour{
 
             cameraParent.transform.position = cameraArrayCenter + new Vector3(offsetX, offsetY, offsetZ);
             cameraParent.transform.eulerAngles = cameraArrayRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+            Debug.Log($"Applied offsets - Pos: ({offsetX:F4}, {offsetY:F4}, {offsetZ:F4}), Rot: ({offsetPitch:F4}, {offsetYaw:F4}, {offsetRoll:F4})");
+            Debug.Log($"Updated camera parent - Pos: {cameraParent.transform.position}, Rot: {cameraParent.transform.eulerAngles}");
         }
         else
         {
@@ -664,8 +671,10 @@ public class SynthesEyesServer : MonoBehaviour{
         Debug.Log("Frame counter reset. Ready to collect new samples.");
     }
 
+    // TODO: update outputs so that all gaze information is accurate.
     private void saveAllCamerasDetails(int frame)
     {
+        // update this to a user-defined path from the camera_config.json "output_path" field
         EnsureDirectoryExists("imgs");
 
         JSONNode rootNode = new JSONClass();
