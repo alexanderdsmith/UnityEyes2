@@ -5,9 +5,6 @@
   "headless_mode": true,
   "motion_center": true, 
   "camera_array_center": {
-<<<<<<< HEAD
-    "x": 1,
-=======
     "x": 0,
     "y": -0.03,
     "z": 0.31,
@@ -17,7 +14,6 @@
   },
   "camera_array_noise": { 
     "x": 0,
->>>>>>> a3ff633 (Preview Mode)
     "y": 0,
     "z": 0,
     "rx": 0,
