@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Xml.Serialization;
 
-// Add JSON serializable classes at the top
 [System.Serializable]
 public class CameraIntrinsics{
     public float fx;
@@ -65,7 +64,7 @@ public class SynthesEyesServer : MonoBehaviour{
     public float eyePitchNoise = 30;
     public float eyeYawNoise = 30;
 
-    // Add these public fields somewhere near the top to define your offset ranges:
+    // Add these public fields somewhere near the top to define offset ranges:
     public float randomXRange = 0.5f;
     public float randomYRange = 0.5f;
     public float randomZRange = 0.5f;
@@ -111,6 +110,8 @@ public class SynthesEyesServer : MonoBehaviour{
     private Vector3 xmlBaseEulerAngles;
     public string xmlCameraFilePath = "camera.xml";
 
+    private EyeVisualizationManager visualizationManager;
+
     void Start()
     {
         // Initialise SynthesEyes Objects
@@ -123,7 +124,16 @@ public class SynthesEyesServer : MonoBehaviour{
 
         lightingController = GameObject.Find("lighting_controller").GetComponent<LightingController>();
 
-        // Load cameras from JSON oe XML
+        // Find or create visualization manager
+        visualizationManager = FindFirstObjectByType<EyeVisualizationManager>();
+        if (visualizationManager == null)
+        {
+            GameObject visualMgrObj = new GameObject("VisualizationManager");
+            visualizationManager = visualMgrObj.AddComponent<EyeVisualizationManager>();
+            visualizationManager.synthesEyesServer = this;
+        }
+
+        // Load cameras from JSON
         if (File.Exists(jsonConfigPath))
         {
             Debug.Log($"-------------------- READ");
@@ -247,6 +257,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
 
+                // TODO: Throw error instead of providing defaults
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
                 {
                     fx = 500f,
@@ -453,6 +464,13 @@ public class SynthesEyesServer : MonoBehaviour{
         if (isSavingData || Input.GetKey("c"))
         {
             RandomizeScene();
+            ToggleOutputPreview();
+            ToggleOutputPreview();
+        }
+
+        if (Input.GetKeyDown("p"))
+        {
+            ToggleOutputPreview();
         }
 
         if (isSavingData || Input.GetKey("r"))
@@ -490,6 +508,12 @@ public class SynthesEyesServer : MonoBehaviour{
         
         cameraList[currentCameraIndex].enabled = true;
         cameraList[currentCameraIndex].tag = "MainCamera";
+    }
+
+    private void ToggleOutputPreview() {
+        //TODO: add preview of output points, including gaze vector, pupil position, points on the iris, etc.
+        visualizationManager.ToggleVisualization();
+        Debug.Log("Output preview toggled");
     }
 
 
