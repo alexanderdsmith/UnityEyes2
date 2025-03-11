@@ -17,7 +17,7 @@
     "z": 0.01,
     "rx": 1,
     "ry": 1,
-    "rz": 30
+    "rz": 20
   },
   "cameras": [ 
     { 
@@ -31,8 +31,8 @@
         "cy": 240, 
         "w": 640, 
         "h": 480,
-        "sensor_width": 36,
-        "sensor_height": 24
+        "sensor_width": 1.6,
+        "sensor_height": 1.2
       }, 
       "intrinsics_noise": { 
         "fx": 0, 
@@ -61,8 +61,8 @@
         "cy": 240, 
         "w": 640, 
         "h": 480,
-        "sensor_width": 36,
-        "sensor_height": 24
+        "sensor_width": 1.6,
+        "sensor_height": 1.2
       }, 
       "intrinsics_noise": { 
         "fx": 0, 
@@ -91,8 +91,8 @@
         "cy": 240, 
         "w": 640, 
         "h": 480,
-        "sensor_width": 36,
-        "sensor_height": 24
+        "sensor_width": 1.6,
+        "sensor_height": 1.2
       }, 
       "intrinsics_noise": { 
         "fx": 0, 
@@ -121,8 +121,8 @@
         "cy": 240, 
         "w": 640, 
         "h": 480,
-        "sensor_width": 36,
-        "sensor_height": 24
+        "sensor_width": 1.6,
+        "sensor_height": 1.2
       }, 
       "intrinsics_noise": { 
         "fx": 0, 

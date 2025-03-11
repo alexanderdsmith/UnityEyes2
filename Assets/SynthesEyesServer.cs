@@ -61,10 +61,9 @@ public class SynthesEyesServer : MonoBehaviour{
     public float cameraYawNoise = Mathf.Deg2Rad * 40;
     public float defaultEyePitch = 0;
     public float defaultEyeYaw = 0;
-    public float eyePitchNoise = 30;
-    public float eyeYawNoise = 30;
+    public float eyePitchNoise = 10;
+    public float eyeYawNoise = 10;
 
-    // Add these public fields somewhere near the top to define offset ranges:
     public float randomXRange = 0.5f;
     public float randomYRange = 0.5f;
     public float randomZRange = 0.5f;
@@ -324,10 +323,10 @@ public class SynthesEyesServer : MonoBehaviour{
                     if (intrinsics["h"] != null) camIntrinsics.height = intrinsics["h"].AsInt;
 
                     if (intrinsics["sensor_width"] != null) camIntrinsics.sensor_width = intrinsics["sensor_width"].AsFloat;
-                    else camIntrinsics.sensor_width = 36f;
+                    else camIntrinsics.sensor_width = 1.6f;
 
                     if (intrinsics["sensor_height"] != null) camIntrinsics.sensor_height = intrinsics["sensor_height"].AsFloat;
-                    else camIntrinsics.sensor_height = 24f;
+                    else camIntrinsics.sensor_height = 1.2f;
                 }
 
                 CameraConfig config = new CameraConfig
@@ -359,6 +358,24 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraList.Add(newCam);
                 cameraOriginalPositions.Add(position);
                 cameraOriginalRotations.Add(rotation);
+
+                // Replace the point light creation code with this spot light implementation:
+
+                // Add a spot light at the camera position
+                GameObject lightObj = new GameObject($"CameraLight_{cameraName}");
+                lightObj.transform.parent = camObj.transform; // Parent to camera
+                lightObj.transform.localPosition = Vector3.zero; // Position at camera center
+                lightObj.transform.localRotation = Quaternion.identity; // Same direction as camera
+
+                Light spotLight = lightObj.AddComponent<Light>();
+                spotLight.type = LightType.Spot;
+                spotLight.range = 100f; // Longer range for spot lights
+                spotLight.spotAngle = 90f; // Fairly narrow spot angle
+                spotLight.innerSpotAngle = 70f; // Soft inner cone
+                spotLight.intensity = 0.3f; // Higher intensity for spot lights
+                spotLight.color = new Color(1f, 1f, 1f); // Slightly bluish white
+                spotLight.shadows = LightShadows.Soft; // Enable shadows
+                spotLight.shadowBias = 0.05f; // Reduce shadow artifacts
             }
 
             if (useMotionCenter)
@@ -413,13 +430,15 @@ public class SynthesEyesServer : MonoBehaviour{
         else
         {
             float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
+            //float fov = 61.92f;
+            Debug.Log($"Setting FOV to {fov}");
             cam.fieldOfView = fov;
 
-            cam.usePhysicalProperties = true;
-            cam.sensorSize = new Vector2(
-                config.intrinsics.width / config.intrinsics.fx * config.intrinsics.sensor_width,
-                config.intrinsics.height / config.intrinsics.fy * config.intrinsics.sensor_height
-            );
+            // cam.usePhysicalProperties = true;
+            // cam.sensorSize = new Vector2(
+            //     config.intrinsics.width / config.intrinsics.fx * config.intrinsics.sensor_width,
+            //     config.intrinsics.height / config.intrinsics.fy * config.intrinsics.sensor_height
+            // );
         }
 
         cam.clearFlags = CameraClearFlags.SolidColor;
@@ -454,6 +473,8 @@ public class SynthesEyesServer : MonoBehaviour{
         //     Debug.Log($"RandomizeScene was called 100 times. Elapsed time: {elapsedTime:F2} seconds");
         // }
         // Randomize eye rotation
+        eyeYawNoise = 20;
+        eyePitchNoise = 15;
         eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
                                  Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
 
@@ -469,8 +490,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
             cameraParent.transform.position = cameraArrayCenter + new Vector3(offsetX, offsetY, offsetZ);
             cameraParent.transform.eulerAngles = cameraArrayRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
-            Debug.Log($"Applied offsets - Pos: ({offsetX:F4}, {offsetY:F4}, {offsetZ:F4}), Rot: ({offsetPitch:F4}, {offsetYaw:F4}, {offsetRoll:F4})");
-            Debug.Log($"Updated camera parent - Pos: {cameraParent.transform.position}, Rot: {cameraParent.transform.eulerAngles}");
         }
         else
         {
@@ -679,9 +698,9 @@ public class SynthesEyesServer : MonoBehaviour{
 
         JSONNode rootNode = new JSONClass();
 
-        rootNode.Add("eye_details", eyeball.GetEyeballDetails());
-        rootNode.Add("lighting_details", lightingController.GetLightingDetails());
-        rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
+        // rootNode.Add("eye_details", eyeball.GetEyeballDetails());
+        // rootNode.Add("lighting_details", lightingController.GetLightingDetails());
+        // rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
 
         JSONNode camerasNode = new JSONClass();
         rootNode.Add("cameras", camerasNode);
@@ -696,24 +715,24 @@ public class SynthesEyesServer : MonoBehaviour{
             JSONNode cameraNode = new JSONClass();
             camerasNode.Add(cameraName, cameraNode);
 
-            cameraNode.Add("head_pose", cam.transform.rotation.eulerAngles.ToString("F4"));
-            cameraNode.Add("camera_pose", eyeball.GetCameratoEyeCenterPose());
+            // cameraNode.Add("head_pose", cam.transform.rotation.eulerAngles.ToString("F4"));
+            // cameraNode.Add("camera_pose", eyeball.GetCameratoEyeCenterPose());
 
-            JSONArray listInteriorMargin2D = new JSONArray();
-            cameraNode.Add("interior_margin_2d", listInteriorMargin2D);
-            foreach (var idx in EyeRegionTopology.interior_margin_idxs)
-            {
-                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-                listInteriorMargin2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
-            }
+            // JSONArray listInteriorMargin2D = new JSONArray();
+            // cameraNode.Add("interior_margin_2d", listInteriorMargin2D);
+            // foreach (var idx in EyeRegionTopology.interior_margin_idxs)
+            // {
+            //     Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+            //     listInteriorMargin2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            // }
 
-            JSONArray listCaruncle2D = new JSONArray();
-            cameraNode.Add("caruncle_2d", listCaruncle2D);
-            foreach (var idx in EyeRegionTopology.caruncle_idxs)
-            {
-                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-                listCaruncle2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
-            }
+            // JSONArray listCaruncle2D = new JSONArray();
+            // cameraNode.Add("caruncle_2d", listCaruncle2D);
+            // foreach (var idx in EyeRegionTopology.caruncle_idxs)
+            // {
+            //     Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+            //     listCaruncle2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            // }
 
             JSONArray listIris2D = new JSONArray();
             cameraNode.Add("iris_2d", listIris2D);
@@ -723,7 +742,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 listIris2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
             }
 
-            cameraNode.Add("ground_truth", eyeball.GetGazeVector());
+            cameraNode.Add("ground_truth", eyeball.GetGazeVector(cam));
         }
 
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));

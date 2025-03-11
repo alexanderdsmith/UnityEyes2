@@ -123,6 +123,45 @@ public class EyeballController : MonoBehaviour {
         return gazeNode;
     }
 
+    public JSONNode GetGazeVector(Camera cam) {
+        JSONNode gazeNode = new JSONClass();
+        
+        // Get the camera transform from the Camera object.
+        Transform camTrans = cam.transform;
+        
+        // 1. Compute the iris center in world space (configuration in centimeters)
+        Vector3 irisCenter_cm = GetPupilCenter();
+        // Convert iris center to the coordinate system relative to the given camera.
+        Vector3 relIrisCenter = camTrans.InverseTransformPoint(irisCenter_cm);
+        // Convert to meters.
+        relIrisCenter = relIrisCenter * 0.01f;
+        // Convert from Unity’s left-handed to right-handed (flip Y axis).
+        relIrisCenter.y = -relIrisCenter.y;
+        
+        // 2. Get the normalized gaze direction vector from the eye (in Unity’s coordinate system).
+        Vector3 gazeDir = GetEyeLookVector();
+        // Convert the gaze direction into the camera's local space.
+        Vector3 relGazeDir = camTrans.InverseTransformDirection(gazeDir);
+        
+        // 3. Compute a point offset from the iris center by 1 unit along the gaze direction.
+        Vector3 gazePoint = relIrisCenter + relGazeDir * 1.0f;
+        // (Optional conversion)
+        gazePoint = gazePoint * 0.01f;
+        gazePoint.y = -gazePoint.y;
+        
+        // 4. Also compute the world origin (0,0,0) in camera coordinates.
+        Vector3 eyeCenter = camTrans.InverseTransformPoint(Vector3.zero);
+        eyeCenter = eyeCenter * 0.01f;
+        eyeCenter.y = -eyeCenter.y;
+        
+        // 5. Add these points to the JSON node.
+        gazeNode.Add("iris_center", relIrisCenter.ToString("F6"));
+        gazeNode.Add("gaze_vector", gazePoint.ToString("F6"));
+        gazeNode.Add("eye_center", eyeCenter.ToString("F6"));
+        
+        return gazeNode;
+    }
+
     public JSONNode GetCameratoEyeCenterPose() {
         JSONNode cameraNode = new JSONClass();
 
