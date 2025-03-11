@@ -152,6 +152,8 @@ public class SynthesEyesServer : MonoBehaviour{
     private void LoadCamerasFromConfig(string configPath)
     {
         cameraList.Clear();
+        Camera.main.clearFlags = CameraClearFlags.SolidColor;
+        Camera.main.backgroundColor = new Color(0.5f, 0.5f, 0.5f);
 
         try
         {
@@ -416,6 +418,10 @@ public class SynthesEyesServer : MonoBehaviour{
                 config.intrinsics.height / config.intrinsics.fy * config.intrinsics.sensor_height
             );
         }
+
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0.5f, 0.5f, 0.5f);
+
     }
 
     private float GetRandomOffset(float range)
