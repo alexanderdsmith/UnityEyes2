@@ -140,6 +140,8 @@ public class SynthesEyesServer : MonoBehaviour{
 
             LoadCamerasFromConfig(jsonConfigPath);
         }
+
+        // TODO: remove xml loader
         else if (File.Exists(xmlCameraFilePath))
         {
             Debug.LogWarning("Using legacy XML config");
@@ -178,30 +180,63 @@ public class SynthesEyesServer : MonoBehaviour{
             if (rootNode["camera_array_center"] != null)
             {
                 JSONNode centerNode = rootNode["camera_array_center"];
-                cameraArrayCenter = new Vector3(
+                
+                Vector3 arrayPosition = new Vector3(
                     centerNode["x"] != null ? centerNode["x"].AsFloat : 0f,
                     centerNode["y"] != null ? centerNode["y"].AsFloat : 0f,
                     centerNode["z"] != null ? centerNode["z"].AsFloat : 0f
                 );
-                cameraArrayRotation = new Vector3(
+                
+                Vector3 arrayRotation = new Vector3(
                     centerNode["rx"] != null ? centerNode["rx"].AsFloat : 0f,
                     centerNode["ry"] != null ? centerNode["ry"].AsFloat : 0f,
                     centerNode["rz"] != null ? centerNode["rz"].AsFloat : 0f
+                );
+                
+                // Convert position from right-handed meters to left-handed centimeters
+                cameraArrayCenter = new Vector3(
+                    arrayPosition.x * 100f,           // Scale to cm
+                    -arrayPosition.y * 100f,          // Invert Y and scale to cm
+                    arrayPosition.z * 100f            // Scale to cm
+                );
+                
+                // Convert rotation from right-handed to left-handed coordinate system
+                cameraArrayRotation = new Vector3(
+                    -arrayRotation.x,                 // Invert X rotation
+                    arrayRotation.y,                  // Keep Y rotation
+                    -arrayRotation.z                  // Invert Z rotation
                 );
             }
 
             if (rootNode["camera_array_noise"] != null)
             {
                 JSONNode noiseNode = rootNode["camera_array_noise"];
-                cameraArrayPositionNoise = new Vector3(
+                
+                // Parse position noise values from JSON (in right-handed meters)
+                Vector3 positionNoise = new Vector3(
                     noiseNode["x"] != null ? noiseNode["x"].AsFloat : 0f,
                     noiseNode["y"] != null ? noiseNode["y"].AsFloat : 0f,
                     noiseNode["z"] != null ? noiseNode["z"].AsFloat : 0f
                 );
-                cameraArrayRotationNoise = new Vector3(
+                
+                Vector3 rotationNoise = new Vector3(
                     noiseNode["rx"] != null ? noiseNode["rx"].AsFloat : 0f,
                     noiseNode["ry"] != null ? noiseNode["ry"].AsFloat : 0f,
                     noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
+                );
+                
+                // Convert position noise from right-handed meters to left-handed centimeters
+                cameraArrayPositionNoise = new Vector3(
+                    positionNoise.x * 100f,           // Scale to cm
+                    -positionNoise.y * 100f,          // Invert Y and scale to cm
+                    positionNoise.z * 100f            // Scale to cm
+                );
+                
+                // Convert rotation noise from right-handed to left-handed coordinate system
+                cameraArrayRotationNoise = new Vector3(
+                    -rotationNoise.x,                 // Invert X rotation
+                    rotationNoise.y,                  // Keep Y rotation
+                    -rotationNoise.z                  // Invert Z rotation
                 );
             }
 
@@ -226,7 +261,6 @@ public class SynthesEyesServer : MonoBehaviour{
                 JSONNode camNode = camerasArray[i];
 
                 string cameraName= camNode["name"] != null ? camNode["name"].Value : $"Camera_{i}";
-                Debug.Log($"Processing camera: {cameraName}");
 
 
                 GameObject camObj = new GameObject(cameraName);
@@ -238,16 +272,26 @@ public class SynthesEyesServer : MonoBehaviour{
 
                 if (extrinsics != null)
                 {
-                    position = new Vector3(
-                        extrinsics["x"] != null? extrinsics["x"].AsFloat : 0f,
-                        extrinsics["y"] != null? extrinsics["y"].AsFloat : 0f,
-                        extrinsics["z"] != null? extrinsics["z"].AsFloat : 0f
+                    Vector3 extrinsicPosition = new Vector3(
+                        extrinsics["x"] != null ? extrinsics["x"].AsFloat : 0f,
+                        extrinsics["y"] != null ? extrinsics["y"].AsFloat : 0f,
+                        extrinsics["z"] != null ? extrinsics["z"].AsFloat : 0f
                     );
-
-                    rotation = new Vector3(
+                    
+                    Vector3 extrinsicRotation = new Vector3(
                         extrinsics["rx"] != null ? extrinsics["rx"].AsFloat : 0f,
                         extrinsics["ry"] != null ? extrinsics["ry"].AsFloat : 0f,
                         extrinsics["rz"] != null ? extrinsics["rz"].AsFloat : 0f
+                    );
+                    position = new Vector3(
+                        extrinsicPosition.x * 100f,          // Scale to cm
+                        -extrinsicPosition.y * 100f,         // Invert Y and scale to cm
+                        extrinsicPosition.z * 100f           // Scale to cm
+                    );
+                    rotation = new Vector3(
+                        -extrinsicRotation.x,                // Invert X rotation
+                        extrinsicRotation.y,                 // Keep Y rotation
+                        -extrinsicRotation.z                 // Invert Z rotation
                     );
                 }
 
@@ -257,7 +301,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
 
-                // TODO: Throw error instead of providing defaults
+                // TODO: Throw error instead of providing defaults, or clarify in documentation what the default values are (not zero)
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
                 {
                     fx = 500f,
@@ -313,27 +357,30 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraList.Add(newCam);
                 cameraOriginalPositions.Add(position);
                 cameraOriginalRotations.Add(rotation);
-
-                Debug.Log($"Added camera {cameraName} to list. Position: {position}, Rotation: {rotation}");
             }
 
             if (useMotionCenter)
             {
                 cameraParent = new GameObject("CameraArrayParent");
+                
                 cameraParent.transform.position = cameraArrayCenter;
                 cameraParent.transform.eulerAngles = cameraArrayRotation;
 
                 foreach (Camera cam in cameraList)
                 {
-                    Vector3 relativePosition = cam.transform.position - cameraArrayCenter;
-                    Vector3 relativeRotation = cam.transform.eulerAngles - cameraArrayRotation;
-
-                    cam.transform.parent = cameraParent.transform;
-                    cam.transform.localPosition = relativePosition;
-                    cam.transform.localEulerAngles = relativeRotation;
+                    // Get the current local position/rotation (after parenting)
+                    Vector3 currentLocalPosition = cam.transform.localPosition;
+                    Quaternion currentLocalRotation = cam.transform.localRotation;
+                    
+                    // Convert local to world position
+                    Vector3 desiredWorldPosition = cameraParent.transform.TransformPoint(currentLocalPosition);
+                    Quaternion desiredWorldRotation = cameraParent.transform.rotation * currentLocalRotation;
+                    
+                    // Set the world position/rotation
+                    cam.transform.position = desiredWorldPosition;
+                    cam.transform.rotation = desiredWorldRotation;
                 }
             }
-
 
             if (cameraList.Count > 0)
             {
@@ -414,7 +461,6 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         else
         {
-
             Camera currentCam = cameraList[currentCameraIndex];
 
             Vector3 originalPosition = cameraOriginalPositions[currentCameraIndex];
@@ -513,7 +559,6 @@ public class SynthesEyesServer : MonoBehaviour{
     private void ToggleOutputPreview() {
         //TODO: add preview of output points, including gaze vector, pupil position, points on the iris, etc.
         visualizationManager.ToggleVisualization();
-        Debug.Log("Output preview toggled");
     }
 
 

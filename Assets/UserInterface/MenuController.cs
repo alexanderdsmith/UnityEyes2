@@ -460,7 +460,7 @@ public class MenuController : MonoBehaviour
 
         cameraGroupValues[cameraId][groupName][fieldName] = parsedValue;
 
-        Debug.Log($"Updated Camera {cameraId}.{groupName}.{fieldName} to {parsedValue}");
+        //Debug.Log($"Updated Camera {cameraId}.{groupName}.{fieldName} to {parsedValue}");
     }
 
     public void RemoveCamera()

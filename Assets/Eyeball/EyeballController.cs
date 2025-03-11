@@ -69,31 +69,24 @@ public class EyeballController : MonoBehaviour {
             vertices[iris_idxs[i]] = iris_middle + offset * irisSize;
         }
 
-        // finally update mesh
         mesh.vertices = vertices;
 
-        // also modify pupil size via material
+        // TODO: Randomize pupil size based on clamped uniform distribution instead of gaussian noise
         eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
 
-        // choose a random iris color
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);
         else eyeMaterial.SetTexture("_MainTex", colorTexs[Random.Range(0, colorTexs.Count)]);
     }
 
     public Vector3 GetPupilCenter() {
-        // Get the current mesh
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
         
-        // Calculate the centroid of iris vertices
         Vector3 iris_middle = Vector3.zero;
         foreach (int idx in iris_idxs) {
             iris_middle += vertices[idx];
         }
         iris_middle /= (float)iris_idxs.Length;
-        
-        // Return the world-space position of the iris middle
-        Debug.Log($"World space iris: {transform.TransformPoint(iris_middle)}");
         return transform.TransformPoint(iris_middle);
     }
 	
