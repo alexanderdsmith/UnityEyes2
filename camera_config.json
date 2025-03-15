@@ -1,7 +1,7 @@
 { 
   "output_path": "~/data/imgs",
   "num_samples": 100,
-  "headless_mode": true,
+  "headless_mode": false,
   "motion_center": true, 
   "camera_array_center": {
     "x": 0,
@@ -49,6 +49,14 @@
         "rx": -26.341, 
         "ry": 23.9,
         "rz": -40
+      },
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
       }
     },
     { 
@@ -79,6 +87,14 @@
         "rx": -26.341,
         "ry": -23.9, 
         "rz": 40
+      },
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
       }
     },
     { 
@@ -109,6 +125,14 @@
         "rx": 26.341, 
         "ry": 23.9,
         "rz": -140
+      },
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
       }
     },
     { 
@@ -139,7 +163,95 @@
         "rx": 26.341,
         "ry": -23.9,
         "rz": 140
+      },
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
       }
     }
-  ]
+  ],
+  "lights": [
+    {
+      "name": "point_light_1",
+      "type": "point",
+      "array_mounted": true,
+      "extrinsics": { 
+        "x": -0.022, 
+        "y": 0.008,
+        "z": 0.253,
+        "rx": -26.341, 
+        "ry": 23.9,
+        "rz": -40
+      },
+      "extrinsics_noise": { 
+        "x": 0, 
+        "y": 0, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
+      },
+      "properties": {
+        "range": 100.0,
+        "intensity": 0.3,
+        "color": {
+          "r": 1.0,
+          "g": 1.0,
+          "b": 1.0
+        },
+        "shadows": "soft",
+        "shadow_bias": 0.05
+      }
+    },
+    {
+      "name": "point_light_2",
+      "type": "point",
+      "array_mounted": true,
+      "extrinsics": { 
+        "x": 0.022, 
+        "y": 0.008,
+        "z": 0.253,
+        "rx": -26.341,
+        "ry": -23.9, 
+        "rz": 40
+      },
+      "extrinsics_noise": { 
+        "x": 0.045, 
+        "y": 0.006, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
+      },
+      "properties": {
+        "range": 80.0,
+        "intensity": 0.25,
+        "color": {
+          "r": 0.9,
+          "g": 0.9,
+          "b": 1.0
+        },
+        "shadows": "soft",
+        "shadow_bias": 0.05
+      }
+    }
+  ],
+  "eye_parameters": {
+    "pupil_size_range": {
+      "min": 0.2,
+      "max": 0.8
+    },
+    "iris_size_range": {
+      "min": 0.9,
+      "max": 1.0
+    },
+    "default_yaw": 0,
+    "default_pitch": 0,
+    "yaw_noise": 20,
+    "pitch_noise": 15
+  }
 }
