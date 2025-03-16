@@ -34,6 +34,16 @@ public class CameraConfiguration{
     public List<CameraConfig> cameras;
 }
 
+[System.Serializable]
+public class EyeParameters
+{
+    public Vector2 pupilSizeRange;
+    public Vector2 irisSizeRange;
+    public float defaultYaw;
+    public float defaultPitch;
+    public float yawNoise;
+    public float pitchNoise;
+}
 
 
 public class SynthesEyesServer : MonoBehaviour{
@@ -45,6 +55,7 @@ public class SynthesEyesServer : MonoBehaviour{
     public GameObject eyeWetnessSubdivObj;
     public GameObject eyeLashesObj;
 
+    // Component references
     private EyeballController eyeball;
     private EyeRegionController eyeRegion;
     private SubdivMesh eyeRegionSubdiv;
@@ -63,13 +74,6 @@ public class SynthesEyesServer : MonoBehaviour{
     public float defaultEyeYaw = 0;
     public float eyePitchNoise = 10;
     public float eyeYawNoise = 10;
-
-    public float randomXRange = 0.5f;
-    public float randomYRange = 0.5f;
-    public float randomZRange = 0.5f;
-    public float randomPitchRange = Mathf.Deg2Rad * 3;
-    public float randomYawRange = Mathf.Deg2Rad * 3;
-    public float randomRollRange = Mathf.Deg2Rad * 3;
 
     private float randomizeSceneStartTime = 0f;
     private int randomizeSceneCallCount = 0;
@@ -91,12 +95,24 @@ public class SynthesEyesServer : MonoBehaviour{
     private List<Vector3> cameraOriginalPositions = new List<Vector3>();
     private List<Vector3> cameraOriginalRotations = new List<Vector3>();
 
+    // Motion Center -> False (Individual camera extrinsics noise)
+    private List<Vector3> cameraExtrinsicsPositionNoise = new List<Vector3>();
+    private List<Vector3> cameraExtrinsicsRotationNoise = new List<Vector3>();
+
     private List<CameraIntrinsics> cameraOriginalIntrinsics = new List<CameraIntrinsics>();
+
+    // Point light tracking
+    private List<Light> pointLightList = new List<Light>();
+    private List<Vector3> pointLightOriginalPositions = new List<Vector3>();
+    private List<Vector3> pointLightOriginalRotations = new List<Vector3>();
+    private List<bool> pointLightArrayMounted = new List<bool>();
+
+    private EyeParameters eyeParameters;
 
     // Headless Mode
     private bool headlessMode = false;
 
-    // should you save the data or not
+    // Data saving control
     public bool isSavingData = false;
 
 	private Mesh eyemesh;
@@ -136,13 +152,12 @@ public class SynthesEyesServer : MonoBehaviour{
         if (File.Exists(jsonConfigPath))
         {
             LoadCamerasFromConfig(jsonConfigPath);
-        }
 
-        // TODO: remove xml loader
-        else if (File.Exists(xmlCameraFilePath))
-        {
-            Debug.LogWarning("Using legacy XML config");
-            LoadCameraFromFile(xmlCameraFilePath);
+            if (eyeParameters != null)
+            {
+                eyeball.SetPupilSizeRange(eyeParameters.pupilSizeRange);
+                eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
+            }
         }
     }
 
@@ -179,26 +194,26 @@ public class SynthesEyesServer : MonoBehaviour{
             if (rootNode["camera_array_center"] != null)
             {
                 JSONNode centerNode = rootNode["camera_array_center"];
-                
+
                 Vector3 arrayPosition = new Vector3(
                     centerNode["x"] != null ? centerNode["x"].AsFloat : 0f,
                     centerNode["y"] != null ? centerNode["y"].AsFloat : 0f,
                     centerNode["z"] != null ? centerNode["z"].AsFloat : 0f
                 );
-                
+
                 Vector3 arrayRotation = new Vector3(
                     centerNode["rx"] != null ? centerNode["rx"].AsFloat : 0f,
                     centerNode["ry"] != null ? centerNode["ry"].AsFloat : 0f,
                     centerNode["rz"] != null ? centerNode["rz"].AsFloat : 0f
                 );
-                
+
                 // Convert position from right-handed meters to left-handed centimeters
                 cameraArrayCenter = new Vector3(
                     arrayPosition.x * 100f,           // Scale to cm
                     -arrayPosition.y * 100f,          // Invert Y and scale to cm
                     arrayPosition.z * 100f            // Scale to cm
                 );
-                
+
                 // Convert rotation from right-handed to left-handed coordinate system
                 cameraArrayRotation = new Vector3(
                     -arrayRotation.x,                 // Invert X rotation
@@ -212,26 +227,26 @@ public class SynthesEyesServer : MonoBehaviour{
             if (rootNode["camera_array_noise"] != null)
             {
                 JSONNode noiseNode = rootNode["camera_array_noise"];
-                
+
                 // Parse position noise values from JSON (in right-handed meters)
                 Vector3 positionNoise = new Vector3(
                     noiseNode["x"] != null ? noiseNode["x"].AsFloat : 0f,
                     noiseNode["y"] != null ? noiseNode["y"].AsFloat : 0f,
                     noiseNode["z"] != null ? noiseNode["z"].AsFloat : 0f
                 );
-                
+
                 Vector3 rotationNoise = new Vector3(
                     noiseNode["rx"] != null ? noiseNode["rx"].AsFloat : 0f,
                     noiseNode["ry"] != null ? noiseNode["ry"].AsFloat : 0f,
                     noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
                 );
-                
+
                 cameraArrayPositionNoise = new Vector3(
                     positionNoise.x * 100f,           // Scale to cm
                     -positionNoise.y * 100f,          // Invert Y and scale to cm
                     positionNoise.z * 100f            // Scale to cm
                 );
-                
+
                 cameraArrayRotationNoise = new Vector3(
                     -rotationNoise.x,                 // Invert X rotation
                     rotationNoise.y,                  // Keep Y rotation
@@ -246,6 +261,38 @@ public class SynthesEyesServer : MonoBehaviour{
                 headlessMode = rootNode["headless_mode"].AsBool;
                 Debug.Log($"Headless mode: {headlessMode}");
             }
+            if (rootNode["eye_parameters"] != null)
+            {
+                JSONNode eyeParamsNode = rootNode["eye_parameters"];
+                eyeParameters = new EyeParameters();
+
+                if (eyeParamsNode["pupil_size_range"] != null)
+                {
+                    eyeParameters.pupilSizeRange = new Vector2(
+                        eyeParamsNode["pupil_size_range"]["min"].AsFloat,
+                        eyeParamsNode["pupil_size_range"]["max"].AsFloat
+                    );
+                }
+
+                if (eyeParamsNode["iris_size_range"] != null)
+                {
+                    eyeParameters.irisSizeRange = new Vector2(
+                        eyeParamsNode["iris_size_range"]["min"].AsFloat,
+                        eyeParamsNode["iris_size_range"]["max"].AsFloat
+                    );
+                }
+
+                eyeParameters.defaultYaw = eyeParamsNode["default_yaw"] != null ? eyeParamsNode["default_yaw"].AsFloat : 0f;
+                eyeParameters.defaultPitch = eyeParamsNode["default_pitch"] != null ? eyeParamsNode["default_pitch"].AsFloat : 0f;
+                eyeParameters.yawNoise = eyeParamsNode["yaw_noise"] != null ? eyeParamsNode["yaw_noise"].AsFloat : 10f;
+                eyeParameters.pitchNoise = eyeParamsNode["pitch_noise"] != null ? eyeParamsNode["pitch_noise"].AsFloat : 10f;
+
+                defaultEyeYaw = eyeParameters.defaultYaw;
+                defaultEyePitch = eyeParameters.defaultPitch;
+                eyeYawNoise = eyeParameters.yawNoise;
+                eyePitchNoise = eyeParameters.pitchNoise;
+
+            }
 
             JSONArray camerasArray = rootNode["cameras"].AsArray;
             if (camerasArray == null)
@@ -256,19 +303,18 @@ public class SynthesEyesServer : MonoBehaviour{
 
             Debug.Log($"Found {camerasArray.Count} cameras");
 
-
-            for (int i =0; i < camerasArray.Count; i++)
+            for (int i = 0; i < camerasArray.Count; i++)
             {
                 JSONNode camNode = camerasArray[i];
 
-                string cameraName= camNode["name"] != null ? camNode["name"].Value : $"Camera_{i}";
+                string cameraName = camNode["name"] != null ? camNode["name"].Value : $"Camera_{i}";
 
 
                 GameObject camObj = new GameObject(cameraName);
                 Camera newCam = camObj.AddComponent<Camera>();
 
                 JSONNode extrinsics = camNode["extrinsics"];
-                Vector3 position= Vector3.zero;
+                Vector3 position = Vector3.zero;
                 Vector3 rotation = Vector3.zero;
 
                 if (extrinsics != null)
@@ -278,7 +324,7 @@ public class SynthesEyesServer : MonoBehaviour{
                         extrinsics["y"] != null ? extrinsics["y"].AsFloat : 0f,
                         extrinsics["z"] != null ? extrinsics["z"].AsFloat : 0f
                     );
-                    
+
                     Vector3 extrinsicRotation = new Vector3(
                         extrinsics["rx"] != null ? extrinsics["rx"].AsFloat : 0f,
                         extrinsics["ry"] != null ? extrinsics["ry"].AsFloat : 0f,
@@ -299,10 +345,32 @@ public class SynthesEyesServer : MonoBehaviour{
                 camObj.transform.position = position;
                 camObj.transform.eulerAngles = rotation;
 
+                JSONNode extrinsicsNoise = camNode["extrinsics_noise"];
+                Vector3 extrinsicsPositionNoise = Vector3.zero;
+                Vector3 extrinsicsRotationNoise = Vector3.zero;
+
+                if (extrinsicsNoise != null)
+                {
+                    extrinsicsPositionNoise = new Vector3(
+                        extrinsicsNoise["x"] != null ? extrinsicsNoise["x"].AsFloat * 100f : 0f,
+                        extrinsicsNoise["y"] != null ? -extrinsicsNoise["y"].AsFloat * 100f : 0f,
+                        extrinsicsNoise["z"] != null ? extrinsicsNoise["z"].AsFloat * 100f : 0f
+                    );
+
+                    extrinsicsRotationNoise = new Vector3(
+                        extrinsicsNoise["rx"] != null ? -extrinsicsNoise["rx"].AsFloat : 0f,
+                        extrinsicsNoise["ry"] != null ? extrinsicsNoise["ry"].AsFloat : 0f,
+                        extrinsicsNoise["rz"] != null ? -extrinsicsNoise["rz"].AsFloat : 0f
+                    );
+                }
+
+                cameraExtrinsicsPositionNoise.Add(extrinsicsPositionNoise);
+                cameraExtrinsicsRotationNoise.Add(extrinsicsRotationNoise);
+
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
 
-                // TODO: Throw error instead of providing defaults, or clarify in documentation what the default values are (not zero)
+                // Set default values
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
                 {
                     fx = 500f,
@@ -358,62 +426,207 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraList.Add(newCam);
                 cameraOriginalPositions.Add(position);
                 cameraOriginalRotations.Add(rotation);
-
-                // Replace the point light creation code with this spot light implementation:
-
-                // Add a spot light at the camera position
-                GameObject lightObj = new GameObject($"CameraLight_{cameraName}");
-                lightObj.transform.parent = camObj.transform; // Parent to camera
-                lightObj.transform.localPosition = Vector3.zero; // Position at camera center
-                lightObj.transform.localRotation = Quaternion.identity; // Same direction as camera
-
-                Light spotLight = lightObj.AddComponent<Light>();
-                spotLight.type = LightType.Spot;
-                spotLight.range = 100f; // Longer range for spot lights
-                spotLight.spotAngle = 90f; // Fairly narrow spot angle
-                spotLight.innerSpotAngle = 70f; // Soft inner cone
-                spotLight.intensity = 0.3f; // Higher intensity for spot lights
-                spotLight.color = new Color(1f, 1f, 1f); // Slightly bluish white
-                spotLight.shadows = LightShadows.Soft; // Enable shadows
-                spotLight.shadowBias = 0.05f; // Reduce shadow artifacts
             }
+
+            LoadPointLightsFromConfig(rootNode);
 
             if (useMotionCenter)
             {
                 cameraParent = new GameObject("CameraArrayParent");
-                
+
                 cameraParent.transform.position = cameraArrayCenter;
                 cameraParent.transform.eulerAngles = cameraArrayRotation;
 
+
                 foreach (Camera cam in cameraList)
                 {
-                    // Get the current local position/rotation (after parenting)
                     Vector3 currentLocalPosition = cam.transform.localPosition;
                     Quaternion currentLocalRotation = cam.transform.localRotation;
-                    
-                    // Convert local to world position
+
                     Vector3 desiredWorldPosition = cameraParent.transform.TransformPoint(currentLocalPosition);
                     Quaternion desiredWorldRotation = cameraParent.transform.rotation * currentLocalRotation;
-                    
-                    // Set the world position/rotation
+
                     cam.transform.position = desiredWorldPosition;
                     cam.transform.rotation = desiredWorldRotation;
 
-                    // Parent the camera to the cameraParent
                     cam.transform.parent = cameraParent.transform;
                 }
+
+                for (int i = 0; i < pointLightList.Count; i++)
+                {
+                    Light light = pointLightList[i];
+                    bool isArrayMounted = pointLightArrayMounted[i];
+
+                    if (isArrayMounted)
+                    {
+                        Vector3 currentLocalPosition = light.transform.localPosition;
+                        Quaternion currentLocalRotation = light.transform.localRotation;
+
+                        Vector3 desiredWorldPosition = cameraParent.transform.TransformPoint(currentLocalPosition);
+                        Quaternion desiredWorldRotation = cameraParent.transform.rotation * currentLocalRotation;
+
+                        light.transform.position = desiredWorldPosition;
+                        light.transform.rotation = desiredWorldRotation;
+
+                        light.transform.parent = cameraParent.transform;
+                    }
+                }
+
+                if (cameraList.Count > 0)
+                {
+                    xmlBasePosition = cameraList[0].transform.position;
+                    xmlBaseEulerAngles = cameraList[0].transform.eulerAngles;
+                }
+
             }
 
-            if (cameraList.Count > 0)
+            // If not using motion center, flip cameras to face the right direction
+            if (!useMotionCenter)
             {
-                xmlBasePosition = cameraList[0].transform.position;
-                xmlBaseEulerAngles = cameraList[0].transform.eulerAngles;
-            }
+                foreach (Camera cam in cameraList)
+                {
+                    Vector3 currentRotation = cam.transform.eulerAngles;
+                    cam.transform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y + 180f, currentRotation.z);
+                }
 
+                for (int i = 0; i < cameraOriginalRotations.Count; i++)
+                {
+                    Vector3 origRot = cameraOriginalRotations[i];
+                    cameraOriginalRotations[i] = new Vector3(origRot.x, origRot.y + 180f, origRot.z);
+                }
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"Error loading camera config: {e.Message}\n{e.StackTrace}");
+        }
+    }
+
+    private void LoadPointLightsFromConfig(JSONNode rootNode)
+    {
+        pointLightList.Clear();
+        pointLightOriginalPositions.Clear();
+        pointLightOriginalRotations.Clear();
+        pointLightArrayMounted.Clear();
+
+        if (rootNode["lights"] == null)
+        {
+            Debug.Log("No lights array found in config");
+            return;
+        }
+
+        JSONArray lightsArray = rootNode["lights"].AsArray;
+        if (lightsArray == null)
+        {
+            Debug.Log("Invalid lights array in config");
+            return;
+        }
+
+        Debug.Log($"Found {lightsArray.Count} point lights");
+
+        for (int i = 0; i < lightsArray.Count; i++)
+        {
+            JSONNode lightNode = lightsArray[i];
+            string lightName = lightNode["name"] != null ? lightNode["name"].Value : $"PointLight_{i}";
+            bool isArrayMounted = lightNode["array_mounted"] != null ? lightNode["array_mounted"].AsBool : false;
+
+            GameObject lightObj = new GameObject(lightName);
+            Light pointLight = lightObj.AddComponent<Light>();
+
+            pointLight.type = LightType.Point;
+
+            JSONNode extrinsics = lightNode["extrinsics"];
+            Vector3 position = Vector3.zero;
+            Vector3 rotation = Vector3.zero;
+
+            if (extrinsics != null)
+            {
+                Vector3 extrinsicPosition = new Vector3(
+                    extrinsics["x"] != null ? extrinsics["x"].AsFloat : 0f,
+                    extrinsics["y"] != null ? extrinsics["y"].AsFloat : 0f,
+                    extrinsics["z"] != null ? extrinsics["z"].AsFloat : 0f
+                );
+
+                Vector3 extrinsicRotation = new Vector3(
+                    extrinsics["rx"] != null ? extrinsics["rx"].AsFloat : 0f,
+                    extrinsics["ry"] != null ? extrinsics["ry"].AsFloat : 0f,
+                    extrinsics["rz"] != null ? extrinsics["rz"].AsFloat : 0f
+                );
+
+                // Convert from right-handed meters to left-handed centimeters (same as cameras)
+                position = new Vector3(
+                    extrinsicPosition.x * 100f,          // Scale to cm
+                    -extrinsicPosition.y * 100f,         // Invert Y and scale to cm
+                    extrinsicPosition.z * 100f           // Scale to cm
+                );
+
+                rotation = new Vector3(
+                    -extrinsicRotation.x,                // Invert X rotation
+                    extrinsicRotation.y,                 // Keep Y rotation
+                    -extrinsicRotation.z                 // Invert Z rotation
+                );
+            }
+
+            lightObj.transform.position = position;
+            lightObj.transform.eulerAngles = rotation;
+
+            JSONNode properties = lightNode["properties"];
+            if (properties != null)
+            {
+                if (properties["range"] != null)
+                    pointLight.range = properties["range"].AsFloat;
+                else
+                    pointLight.range = 100f;
+
+                if (properties["intensity"] != null)
+                    pointLight.intensity = properties["intensity"].AsFloat;
+                else
+                    pointLight.intensity = 0.3f;
+
+                JSONNode colorNode = properties["color"];
+                if (colorNode != null)
+                {
+                    float r = colorNode["r"] != null ? colorNode["r"].AsFloat : 1.0f;
+                    float g = colorNode["g"] != null ? colorNode["g"].AsFloat : 1.0f;
+                    float b = colorNode["b"] != null ? colorNode["b"].AsFloat : 1.0f;
+                    pointLight.color = new Color(r, g, b);
+                }
+                else
+                {
+                    pointLight.color = Color.white;
+                }
+
+                if (properties["shadows"] != null)
+                {
+                    string shadowsValue = properties["shadows"].Value.ToLower();
+                    if (shadowsValue == "hard") pointLight.shadows = LightShadows.Hard;
+                    else if (shadowsValue == "soft") pointLight.shadows = LightShadows.Soft;
+                    else pointLight.shadows = LightShadows.None;
+                }
+                else
+                {
+                    pointLight.shadows = LightShadows.Soft;
+                }
+
+                if (properties["shadow_bias"] != null)
+                    pointLight.shadowBias = properties["shadow_bias"].AsFloat;
+                else
+                    pointLight.shadowBias = 0.05f;
+            }
+            else
+            {
+                // Set defaults if no properties are defined
+                pointLight.range = 100f;
+                pointLight.intensity = 0.3f;
+                pointLight.color = Color.white;
+                pointLight.shadows = LightShadows.Soft;
+                pointLight.shadowBias = 0.05f;
+            }
+
+            pointLightList.Add(pointLight);
+            pointLightOriginalPositions.Add(position);
+            pointLightOriginalRotations.Add(rotation);
+            pointLightArrayMounted.Add(isArrayMounted);
         }
     }
 
@@ -430,15 +643,8 @@ public class SynthesEyesServer : MonoBehaviour{
         else
         {
             float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
-            //float fov = 61.92f;
             Debug.Log($"Setting FOV to {fov}");
             cam.fieldOfView = fov;
-
-            // cam.usePhysicalProperties = true;
-            // cam.sensorSize = new Vector2(
-            //     config.intrinsics.width / config.intrinsics.fx * config.intrinsics.sensor_width,
-            //     config.intrinsics.height / config.intrinsics.fy * config.intrinsics.sensor_height
-            // );
         }
 
         cam.clearFlags = CameraClearFlags.SolidColor;
@@ -465,18 +671,8 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         randomizeSceneCallCount++;
 
-
-        // After 100 calls, log the elapsed time
-        // if (randomizeSceneCallCount == 1000)
-        // {
-        //     float elapsedTime = Time.time - randomizeSceneStartTime;
-        //     Debug.Log($"RandomizeScene was called 100 times. Elapsed time: {elapsedTime:F2} seconds");
-        // }
-        // Randomize eye rotation
-        eyeYawNoise = 20;
-        eyePitchNoise = 15;
-        eyeball.SetEyeRotation(Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw,
-                                 Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch);
+        eyeball.SetEyeRotation(Random.Range(-eyeParameters.yawNoise, eyeParameters.yawNoise) + eyeParameters.defaultYaw,
+                               Random.Range(-eyeParameters.pitchNoise, eyeParameters.pitchNoise) + eyeParameters.defaultPitch);
 
         if (useMotionCenter)
         {
@@ -498,22 +694,8 @@ public class SynthesEyesServer : MonoBehaviour{
             Vector3 originalPosition = cameraOriginalPositions[currentCameraIndex];
             Vector3 originalRotation = cameraOriginalRotations[currentCameraIndex];
 
-            JSONNode camerasArray = JSON.Parse(File.ReadAllText(jsonConfigPath))["cameras"].AsArray;
-            JSONNode camNode = camerasArray[currentCameraIndex];
-            JSONNode extrinsicsNoise = camNode["extrinsics_noise"];
-            JSONNode intrinsicsNoise = camNode["intrinsics_noise"];
-
-            Vector3 positionNoise = new Vector3(
-                extrinsicsNoise["x"] != null ? extrinsicsNoise["x"].AsFloat : 0f,
-                extrinsicsNoise["y"] != null ? extrinsicsNoise["y"].AsFloat : 0f,
-                extrinsicsNoise["z"] != null ? extrinsicsNoise["z"].AsFloat : 0f
-            );
-
-            Vector3 rotationNoise = new Vector3(
-                extrinsicsNoise["rx"] != null ? extrinsicsNoise["rx"].AsFloat : 0f,
-                extrinsicsNoise["ry"] != null ? extrinsicsNoise["ry"].AsFloat : 0f,
-                extrinsicsNoise["rz"] != null ? extrinsicsNoise["rz"].AsFloat : 0f
-            );
+            Vector3 positionNoise = cameraExtrinsicsPositionNoise[currentCameraIndex];
+            Vector3 rotationNoise = cameraExtrinsicsRotationNoise[currentCameraIndex];
 
             float offsetX = GetRandomOffset(positionNoise.x);
             float offsetY = GetRandomOffset(positionNoise.y);
@@ -524,6 +706,48 @@ public class SynthesEyesServer : MonoBehaviour{
 
             currentCam.transform.position = originalPosition + new Vector3(offsetX, offsetY, offsetZ);
             currentCam.transform.eulerAngles = originalRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+
+            for (int i = 0; i < pointLightList.Count; i++)
+            {
+                // Skip array-mounted lights
+                if (pointLightArrayMounted[i]) continue;
+
+                Light light = pointLightList[i];
+                Vector3 lightOriginalPosition = pointLightOriginalPositions[i];
+                Vector3 lightOriginalRotation = pointLightOriginalRotations[i];
+
+                JSONNode lightsArray = JSON.Parse(File.ReadAllText(jsonConfigPath))["lights"].AsArray;
+                // Skip if index exceeds available config entries
+                if (i >= lightsArray.Count) continue;
+
+                JSONNode lightNode = lightsArray[i];
+                JSONNode lightExtrinsicsNoise = lightNode["extrinsics_noise"];
+
+                if (lightExtrinsicsNoise != null)
+                {
+                    Vector3 lightPositionNoise = new Vector3(
+                        lightExtrinsicsNoise["x"] != null ? lightExtrinsicsNoise["x"].AsFloat : 0f,
+                        lightExtrinsicsNoise["y"] != null ? lightExtrinsicsNoise["y"].AsFloat : 0f,
+                        lightExtrinsicsNoise["z"] != null ? lightExtrinsicsNoise["z"].AsFloat : 0f
+                    );
+
+                    Vector3 lightRotationNoise = new Vector3(
+                        lightExtrinsicsNoise["rx"] != null ? lightExtrinsicsNoise["rx"].AsFloat : 0f,
+                        lightExtrinsicsNoise["ry"] != null ? lightExtrinsicsNoise["ry"].AsFloat : 0f,
+                        lightExtrinsicsNoise["rz"] != null ? lightExtrinsicsNoise["rz"].AsFloat : 0f
+                    );
+
+                    float lightOffsetX = GetRandomOffset(lightPositionNoise.x * 100f); 
+                    float lightOffsetY = GetRandomOffset(-lightPositionNoise.y * 100f); 
+                    float lightOffsetZ = GetRandomOffset(lightPositionNoise.z * 100f);
+                    float lightOffsetPitch = GetRandomOffset(-lightRotationNoise.x);
+                    float lightOffsetYaw = GetRandomOffset(lightRotationNoise.y); 
+                    float lightOffsetRoll = GetRandomOffset(-lightRotationNoise.z); 
+
+                    light.transform.position = lightOriginalPosition + new Vector3(lightOffsetX, lightOffsetY, lightOffsetZ);
+                    light.transform.eulerAngles = lightOriginalRotation + new Vector3(lightOffsetPitch, lightOffsetYaw, lightOffsetRoll);
+                }
+            }
         }
     }
 
@@ -589,7 +813,6 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
     private void ToggleOutputPreview() {
-        //TODO: add preview of output points, including gaze vector, pupil position, points on the iris, etc.
         visualizationManager.ToggleVisualization();
     }
 
@@ -615,7 +838,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private IEnumerator saveFrame()
     {
-        // Check if we've reached the maximum number of samples
         if (framesSaved >= maxSamplesToSave)
         {
             Debug.Log($"Maximum number of samples ({maxSamplesToSave}) reached. Stopping data collection.");
@@ -664,7 +886,6 @@ public class SynthesEyesServer : MonoBehaviour{
             cam.targetTexture = originalRenderTexture;
             RenderTexture.active = null;
 
-            // Save the image with the appropriate name
             byte[] imgBytes = tex.EncodeToJPG();
             string fileName = string.Format("imgs/{0}_{1}.jpg", framesSaved, cameraName);
             File.WriteAllBytes(fileName, imgBytes);
@@ -673,13 +894,10 @@ public class SynthesEyesServer : MonoBehaviour{
             Object.Destroy(tex);
         }
 
-        // Save details for this camera
         saveAllCamerasDetails(framesSaved);
 
-        // Restore the original camera if not in headless mode
         if (!headlessMode)
         {
-            // Restore the original active camera
             SwitchCamera(originalCameraIndex - currentCameraIndex);
         }
     }
@@ -690,10 +908,9 @@ public class SynthesEyesServer : MonoBehaviour{
         Debug.Log("Frame counter reset. Ready to collect new samples.");
     }
 
-    // TODO: update outputs so that all gaze information is accurate.
+
     private void saveAllCamerasDetails(int frame)
     {
-        // update this to a user-defined path from the camera_config.json "output_path" field
         EnsureDirectoryExists("imgs");
 
         JSONNode rootNode = new JSONClass();
@@ -747,78 +964,4 @@ public class SynthesEyesServer : MonoBehaviour{
 
         File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
     }
-
-
-    // Method to load camera settings (both intrinsic and extrinsic) from an XML file.
-    private void LoadCameraFromFile(string file)
-    {
-        XmlSerializer serializer = new XmlSerializer(typeof(XMLCamera));
-        FileStream stream = new FileStream(file, FileMode.Open);
-        XMLCamera xmlCam = serializer.Deserialize(stream) as XMLCamera;
-        stream.Close();
-
-        Debug.Log("Loading camera settings from XML file: " + file);
-
-        if (xmlCam.Resolution.x > Screen.width || xmlCam.Resolution.y > Screen.height)
-        {
-            Debug.Log($"Resolution exceeds screen dimensions. Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
-        }
-        else
-        {
-            Screen.SetResolution((int)xmlCam.Resolution.x, (int)xmlCam.Resolution.y, FullScreenMode.FullScreenWindow);
-            Debug.Log($"Resolution set to Width: {xmlCam.Resolution.x}, Height: {xmlCam.Resolution.y}");
-        }
-
-        Camera.main.nearClipPlane = xmlCam.Near;
-        Camera.main.farClipPlane = xmlCam.Far;
-        Camera.main.orthographicSize = xmlCam.OrthographicSize;
-        Camera.main.orthographic = xmlCam.IsOrthographic;
-
-        Debug.Log($"Near Clip Plane: {xmlCam.Near}");
-        Debug.Log($"Far Clip Plane: {xmlCam.Far}");
-        Debug.Log($"Orthographic Size: {xmlCam.OrthographicSize}");
-        Debug.Log($"Is Orthographic: {xmlCam.IsOrthographic}");
-
-        if (!Camera.main.orthographic)
-        {
-            Camera.main.fieldOfView = xmlCam.FieldOfView;
-            Camera.main.usePhysicalProperties = xmlCam.IsPhysicalCamera;
-
-            Debug.Log($"Field of View: {xmlCam.FieldOfView}");
-            Debug.Log($"Is Physical Camera: {xmlCam.IsPhysicalCamera}");
-
-            if (Camera.main.usePhysicalProperties)
-            {
-                Camera.main.focalLength = xmlCam.Focal;
-                Camera.main.sensorSize = xmlCam.SensorSize;
-                Camera.main.lensShift = xmlCam.LensShift;
-                Camera.main.gateFit = xmlCam.GateFit;
-
-                Debug.Log($"Focal Length: {xmlCam.Focal}");
-                Debug.Log($"Sensor Size: X={xmlCam.SensorSize.x}, Y={xmlCam.SensorSize.y}");
-                Debug.Log($"Lens Shift: X={xmlCam.LensShift.x}, Y={xmlCam.LensShift.y}");
-                Debug.Log($"Gate Fit Mode: {xmlCam.GateFit}");
-            }
-        }
-
-        if (xmlCam.UseProjectionMatrix)
-        {
-            Camera.main.projectionMatrix = xmlCam.ProjectionMatrix;
-            Debug.Log("Custom Projection Matrix Applied");  
-            Debug.Log(xmlCam.ProjectionMatrix.ToString());
-        }
-
-
-        Camera.main.transform.position = xmlCam.Position;
-        Camera.main.transform.rotation = Quaternion.Euler(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
-
-        xmlBasePosition = xmlCam.Position;
-        xmlBaseEulerAngles = new Vector3(xmlCam.Pitch, xmlCam.Yaw, xmlCam.Roll);
-
-        Debug.Log($"Position: X={xmlCam.Position.x}, Y={xmlCam.Position.y}, Z={xmlCam.Position.z}");
-        Debug.Log($"Rotation (Pitch, Yaw, Roll): Pitch={xmlCam.Pitch}, Yaw={xmlCam.Yaw}, Roll={xmlCam.Roll}");
-
-        Debug.Log("Finished applying camera settings from XML.");
-    }
-
 }

@@ -180,7 +180,7 @@
       "type": "point",
       "array_mounted": true,
       "extrinsics": { 
-        "x": -0.022, 
+        "x": -0.010, 
         "y": 0.008,
         "z": 0.253,
         "rx": -26.341, 

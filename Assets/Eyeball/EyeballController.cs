@@ -13,6 +13,11 @@ public class EyeballController : MonoBehaviour {
     public static Vector3[] iris_start_pos = new Vector3[iris_idxs.Length];
     private float irisSize = 1.0f;
 
+    private float pupilSizeMin = 0.2f;
+    private float pupilSizeMax = 0.8f;
+    private float irisSizeMin = 0.9f;
+    private float irisSizeMax = 1.0f;
+
     public bool isInteractive = false;
 
 	// Use this for initialization
@@ -50,6 +55,18 @@ public class EyeballController : MonoBehaviour {
 		);
     }
 
+    public void SetPupilSizeRange(Vector2 range)
+    {
+        pupilSizeMin = range.x;
+        pupilSizeMax = range.y;
+    }
+
+    public void SetIrisSizeRange(Vector2 range)
+    {
+        irisSizeMin = range.x;
+        irisSizeMax = range.y;
+    }
+
     public void RandomizeEyeball() {
 
         // Slightly decrease iris size on random
@@ -72,7 +89,9 @@ public class EyeballController : MonoBehaviour {
         mesh.vertices = vertices;
 
         // TODO: Randomize pupil size based on clamped uniform distribution instead of gaussian noise
-        eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
+        float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
+        eyeMaterial.SetFloat("_PupilSize", pupilSize);
+
 
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);
         else eyeMaterial.SetTexture("_MainTex", colorTexs[Random.Range(0, colorTexs.Count)]);
