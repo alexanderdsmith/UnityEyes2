@@ -94,7 +94,7 @@ for json_file in json_files:
         plt.title(f"{cam_name} - Image {image_prefix}")
         proj_iris_np = np.array(proj_iris)
         plt.scatter(proj_iris_np[:, 0], proj_iris_np[:, 1],
-                    c='blue', s=20, label='Iris Points (Y inverted)')
+                    c='blue', s=20, label='Iris Points')
         plt.plot(proj_gt_center[0], proj_gt_center[1],
                  marker='*', markersize=15, color='red', label='GT Iris Center')
         # Plot the gaze endpoint as a green circle.

@@ -1,7 +1,7 @@
 { 
   "output_path": "~/data/imgs",
-  "num_samples": 100,
-  "headless_mode": false,
+  "num_samples": 10000,
+  "headless_mode": true,
   "motion_center": true, 
   "camera_array_center": {
     "x": 0,
