@@ -11,10 +11,10 @@ public class EyeballController : MonoBehaviour {
 
     public static int[] iris_idxs = { 3, 7, 11, 14, 18, 21, 25, 29, 33, 37, 41, 45, 49, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124 };
     public static Vector3[] iris_start_pos = new Vector3[iris_idxs.Length];
-    private float irisSize = 1.0f;
+    private float irisSize = 10.0f;
 
-    private float pupilSizeMin = 0.2f;
-    private float pupilSizeMax = 0.8f;
+    private float pupilSizeMin = 2.0f;
+    private float pupilSizeMax = 2.0f;
     private float irisSizeMin = 0.9f;
     private float irisSizeMax = 1.0f;
 
@@ -70,7 +70,7 @@ public class EyeballController : MonoBehaviour {
     public void RandomizeEyeball() {
 
         // Slightly decrease iris size on random
-        irisSize = Random.Range(0.9f, 1.0f);
+        irisSize = Random.Range(0.3f, 1.0f);
 
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;

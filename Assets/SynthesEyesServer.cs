@@ -123,7 +123,6 @@ public class SynthesEyesServer : MonoBehaviour{
     // Store the camera's original transform from XML
     private Vector3 xmlBasePosition;
     private Vector3 xmlBaseEulerAngles;
-    public string xmlCameraFilePath = "camera.xml";
 
     private EyeVisualizationManager visualizationManager;
 

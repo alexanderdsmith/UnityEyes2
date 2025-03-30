@@ -238,16 +238,49 @@
         "shadows": "soft",
         "shadow_bias": 0.05
       }
+    },
+    {
+      "name": "point_light_3",
+      "type": "point",
+      "array_mounted": false,
+      "extrinsics": { 
+        "x": 0.022, 
+        "y": 0.008,
+        "z": 0.253,
+        "rx": -26.341,
+        "ry": -23.9, 
+        "rz": 40
+      },
+      "extrinsics_noise": { 
+        "x": 0.045, 
+        "y": 0.006, 
+        "z": 0, 
+        "rx": 6, 
+        "ry": 0, 
+        "rz": 0
+      },
+      "properties": {
+        "range": 80.0,
+        "intensity": 0.25,
+        "color": {
+          "r": 0.9,
+          "g": 0.9,
+          "b": 1.0
+        },
+        "shadows": "soft",
+        "shadow_bias": 0.05
+      }
     }
+
   ],
   "eye_parameters": {
     "pupil_size_range": {
       "min": 0.2,
-      "max": 0.8
+      "max": 0.2
     },
     "iris_size_range": {
-      "min": 0.9,
-      "max": 1.0
+      "min": 10.0,
+      "max": 10.0
     },
     "default_yaw": 0,
     "default_pitch": 0,

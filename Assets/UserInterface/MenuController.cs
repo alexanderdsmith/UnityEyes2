@@ -28,6 +28,21 @@ public class MenuController : MonoBehaviour
     [SerializeField] private InputField repositoryURLField;
 
     // ---------------------------------------------------------
+    // Motion Center
+    // ---------------------------------------------------------
+    [Header("Motion Center")]
+    [SerializeField] private Toggle motionCenterToggle;
+    [SerializeField] private GameObject motionCenterGroup;
+    [SerializeField] private RectTransform cameraArrayCenterGroup;
+    [SerializeField] private RectTransform cameraArrayCenterNoiseGroup;
+
+    // Dictionaries to store values and input field references
+    private Dictionary<string, Dictionary<string, float>> motionCenterValues =
+        new Dictionary<string, Dictionary<string, float>>();
+    private Dictionary<string, InputFieldRefs> motionCenterInputFields =
+        new Dictionary<string, InputFieldRefs>();
+
+    // ---------------------------------------------------------
     // Camera Controls
     // ---------------------------------------------------------
     [Header("Camera Management")]
@@ -62,7 +77,7 @@ public class MenuController : MonoBehaviour
     [SerializeField] private Button saveButton;
     [SerializeField] private InputField outputPathField;
     [SerializeField] private InputField outputFolderField;
-    [SerializeField] private InputField numSamplesField;
+    [SerializeField] private TMP_InputField numSamplesField;
 
     // ---------------------------------------------------------
     // Multi-Camera Support
@@ -71,6 +86,27 @@ public class MenuController : MonoBehaviour
     [SerializeField] public Toggle multiCameraToggle;
     [SerializeField] private InputField intrinsicsPathField;
     [SerializeField] private InputField extrinsicsPathField;
+
+    // ---------------------------------------------------------
+    // Light Controls
+    // ---------------------------------------------------------
+    [Header("Light Management")]
+    [SerializeField] private Button addLightButton;
+    [SerializeField] private Button removeLightButton;
+
+    private int lightCount = 0;
+
+    [Header("Light Parameter Groups")]
+    [SerializeField] private RectTransform lightContainer;
+    [SerializeField] private GameObject lightGroupPrefab;
+
+    private List<GameObject> addedLights = new List<GameObject>();
+
+    private Dictionary<int, Dictionary<string, Dictionary<string, float>>> lightGroupValues =
+        new Dictionary<int, Dictionary<string, Dictionary<string, float>>>();
+
+    private Dictionary<int, Dictionary<string, InputFieldRefs>> lightInputFields =
+        new Dictionary<int, Dictionary<string, InputFieldRefs>>();
 
     // ---------------------------------------------------------
     // Parameter Distribution
@@ -120,23 +156,51 @@ public class MenuController : MonoBehaviour
 
     // We track whether the menu is open or not
     private bool isMenuOpen = false;
+    private int sampleCount = 10000;
 
     private List<GameObject> addedCameras = new List<GameObject>();
 
     private void Start()
     {
+
         settingsMenu = GameObject.Find("SettingsMenu");
         cameraGroup = GameObject.Find("CameraGroup");
 
         cameraContainer = GameObject.Find("CameraContainer").GetComponent<RectTransform>();
-
         cameraGroupPrefab = Resources.Load<GameObject>("Prefabs/CameraGroup");
+
+        lightContainer = GameObject.Find("LightContainer").GetComponent<RectTransform>();
+        lightGroupPrefab = Resources.Load<GameObject>("Prefabs/LightGroup");
 
         menuButton = GameObject.Find("MenuButton").GetComponent<Button>();
         closeButton = GameObject.Find("ExitButton").GetComponent<Button>();
         addCameraButton = GameObject.Find("AddCamera").GetComponent<Button>();
         removeCameraButton = GameObject.Find("RemoveCamera").GetComponent<Button>();
+        addLightButton = GameObject.Find("AddLight").GetComponent<Button>();
+        removeLightButton = GameObject.Find("RemoveLight").GetComponent<Button>();
         saveButton = GameObject.Find("SaveButton").GetComponent<Button>();
+
+        motionCenterToggle = GameObject.Find("MotionCenterToggle").GetComponent<Toggle>();
+        motionCenterGroup = GameObject.Find("MotionCenter");
+        cameraArrayCenterGroup = GameObject.Find("CameraArrayCenterGroup").GetComponent<RectTransform>();
+        cameraArrayCenterNoiseGroup = GameObject.Find("CameraArrayCenterNoiseGroup").GetComponent<RectTransform>();
+
+        numSamplesField = GameObject.Find("SampleCount").GetComponent<TMP_InputField>();
+
+        if (numSamplesField != null)
+        {
+            numSamplesField.text = sampleCount.ToString();
+        }
+
+        if (motionCenterToggle != null)
+        {
+            motionCenterToggle.onValueChanged.AddListener(OnToggleMotionCenter);
+        }
+
+        InitializeMotionCenterValues();
+        InitializeMotionCenterInputFields();
+
+        SetMotionCenterFieldsInteractable(motionCenterToggle.isOn);
 
         // Initialize the UI
         if (settingsMenu != null)
@@ -164,6 +228,23 @@ public class MenuController : MonoBehaviour
         {
             Debug.Log("Adding listener to Remove Camera button");
             removeCameraButton.onClick.AddListener(RemoveCamera);
+        }
+
+        if (addLightButton != null)
+        {
+            Debug.Log("Adding listener to Add Light button");
+            addLightButton.onClick.AddListener(AddLight);
+        }
+
+        if (removeLightButton != null)
+        {
+            Debug.Log("Adding listener to Remove Light button");
+            removeLightButton.onClick.AddListener(RemoveLight);
+        }
+
+        if (removeLightButton != null)
+        {
+            removeLightButton.interactable = false;
         }
 
         if (saveButton != null)
@@ -244,6 +325,9 @@ public class MenuController : MonoBehaviour
             showPreviewToggle.onValueChanged.AddListener(OnTogglePreview);
         if (showProgressBarToggle != null)
             showProgressBarToggle.onValueChanged.AddListener(OnToggleProgressBar);
+
+        if (numSamplesField != null)
+            numSamplesField.onEndEdit.AddListener(OnSampleCountChanged);
     }
 
     // Event handler implementations
@@ -262,7 +346,6 @@ public class MenuController : MonoBehaviour
     private void OnToggleRandomLighting(bool value) { }
     private void OnLightingModeChanged(int value) { }
     private void OnLightIntensityChanged(float value) { }
-    private void OnSampleCountChanged(string value) { }
     private void OnToggleHeadlessMode(bool value) { }
     private void OnGenerateDatasetClicked() { }
     private void OnOutputPathChanged(string value) { }
@@ -270,6 +353,28 @@ public class MenuController : MonoBehaviour
     private void OnAnnotationFormatChanged(int value) { }
     private void OnTogglePreview(bool value) { }
     private void OnToggleProgressBar(bool value) { }
+
+    private void OnSampleCountChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value) || !int.TryParse(value, out int parsedValue))
+        {
+            Debug.LogWarning($"Could not parse '{value}' as integer for sample count, using default");
+            // Don't change the value if parsing fails
+            return;
+        }
+
+        // Ensure value is positive
+        if (parsedValue <= 0)
+        {
+            Debug.LogWarning($"Sample count must be positive, using 1 instead of {parsedValue}");
+            parsedValue = 1;
+            if (numSamplesField != null)
+                numSamplesField.text = "1";
+        }
+
+        sampleCount = parsedValue;
+        Debug.Log($"Sample count updated to: {sampleCount}");
+    }
 
     private void ToggleMenu()
     {
@@ -286,6 +391,149 @@ public class MenuController : MonoBehaviour
     {
         isMenuOpen = false;
         settingsMenu.SetActive(false);
+    }
+
+    private void InitializeMotionCenterValues()
+    {
+        motionCenterValues["CameraArrayCenter"] = new Dictionary<string, float>();
+        motionCenterValues["CameraArrayCenterNoise"] = new Dictionary<string, float>();
+
+        // Initialize CameraArrayCenter values (x, y, z, rx, ry, rz to 0)
+        motionCenterValues["CameraArrayCenter"]["x"] = 0f;
+        motionCenterValues["CameraArrayCenter"]["y"] = 0f;
+        motionCenterValues["CameraArrayCenter"]["z"] = 0f;
+        motionCenterValues["CameraArrayCenter"]["rx"] = 0f;
+        motionCenterValues["CameraArrayCenter"]["ry"] = 0f;
+        motionCenterValues["CameraArrayCenter"]["rz"] = 0f;
+
+        // Initialize CameraArrayCenterNoise values (x, y, z, rx, ry, rz to 0)
+        motionCenterValues["CameraArrayCenterNoise"]["x"] = 0f;
+        motionCenterValues["CameraArrayCenterNoise"]["y"] = 0f;
+        motionCenterValues["CameraArrayCenterNoise"]["z"] = 0f;
+        motionCenterValues["CameraArrayCenterNoise"]["rx"] = 0f;
+        motionCenterValues["CameraArrayCenterNoise"]["ry"] = 0f;
+        motionCenterValues["CameraArrayCenterNoise"]["rz"] = 0f;
+    }
+
+    private void InitializeMotionCenterInputFields()
+    {
+        motionCenterInputFields["CameraArrayCenter"] = new InputFieldRefs();
+        motionCenterInputFields["CameraArrayCenterNoise"] = new InputFieldRefs();
+
+        // Find and initialize Camera Array Center input fields
+        if (cameraArrayCenterGroup != null)
+        {
+            TMP_InputField[] centerInputFields = cameraArrayCenterGroup.GetComponentsInChildren<TMP_InputField>(true);
+            foreach (TMP_InputField inputField in centerInputFields)
+            {
+                string fieldName = inputField.name.Replace("Input", "").ToLower();
+                StoreMotionCenterInputFieldReference("CameraArrayCenter", fieldName, inputField);
+                SetupMotionCenterInputFieldListener(inputField, "CameraArrayCenter", fieldName);
+                inputField.text = "0"; // Initialize to 0
+            }
+        }
+
+        // Find and initialize Camera Array Center Noise input fields
+        if (cameraArrayCenterNoiseGroup != null)
+        {
+            TMP_InputField[] noiseInputFields = cameraArrayCenterNoiseGroup.GetComponentsInChildren<TMP_InputField>(true);
+            foreach (TMP_InputField inputField in noiseInputFields)
+            {
+                string fieldName = inputField.name.Replace("Input", "").ToLower();
+                StoreMotionCenterInputFieldReference("CameraArrayCenterNoise", fieldName, inputField);
+                SetupMotionCenterInputFieldListener(inputField, "CameraArrayCenterNoise", fieldName);
+                inputField.text = "0"; // Initialize to 0
+            }
+        }
+    }
+
+    private void StoreMotionCenterInputFieldReference(string groupName, string fieldName, TMP_InputField inputField)
+    {
+        if (!motionCenterInputFields.ContainsKey(groupName))
+            return;
+
+        var refs = motionCenterInputFields[groupName];
+
+        switch (fieldName)
+        {
+            case "x": refs.x = inputField; break;
+            case "y": refs.y = inputField; break;
+            case "z": refs.z = inputField; break;
+            case "rx": refs.rx = inputField; break;
+            case "ry": refs.ry = inputField; break;
+            case "rz": refs.rz = inputField; break;
+        }
+    }
+
+    private void SetupMotionCenterInputFieldListener(TMP_InputField inputField, string groupName, string fieldName)
+    {
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onValueChanged.AddListener((value) => {
+            OnMotionCenterValueChanged(groupName, fieldName, value);
+        });
+
+        inputField.onEndEdit.AddListener((value) => {
+            OnMotionCenterValueChanged(groupName, fieldName, value);
+        });
+    }
+
+    private void OnMotionCenterValueChanged(string groupName, string fieldName, string value)
+    {
+        if (!motionCenterValues.ContainsKey(groupName))
+        {
+            Debug.LogError($"Group '{groupName}' not found for Motion Center");
+            motionCenterValues[groupName] = new Dictionary<string, float>();
+        }
+
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float parsedValue))
+        {
+            Debug.LogWarning($"Could not parse '{value}' as float for Motion Center.{groupName}.{fieldName}, using 0");
+            parsedValue = 0f;
+        }
+
+        motionCenterValues[groupName][fieldName] = parsedValue;
+    }
+
+    private void OnToggleMotionCenter(bool isOn)
+    {
+        SetMotionCenterFieldsInteractable(isOn);
+    }
+
+    private void SetMotionCenterFieldsInteractable(bool interactable)
+    {
+        // Enable/disable Camera Array Center input fields
+        if (motionCenterInputFields.ContainsKey("CameraArrayCenter"))
+        {
+            var centerRefs = motionCenterInputFields["CameraArrayCenter"];
+            SetInputFieldInteractable(centerRefs.x, interactable);
+            SetInputFieldInteractable(centerRefs.y, interactable);
+            SetInputFieldInteractable(centerRefs.z, interactable);
+            SetInputFieldInteractable(centerRefs.rx, interactable);
+            SetInputFieldInteractable(centerRefs.ry, interactable);
+            SetInputFieldInteractable(centerRefs.rz, interactable);
+        }
+
+        // Enable/disable Camera Array Center Noise input fields
+        if (motionCenterInputFields.ContainsKey("CameraArrayCenterNoise"))
+        {
+            var noiseRefs = motionCenterInputFields["CameraArrayCenterNoise"];
+            SetInputFieldInteractable(noiseRefs.x, interactable);
+            SetInputFieldInteractable(noiseRefs.y, interactable);
+            SetInputFieldInteractable(noiseRefs.z, interactable);
+            SetInputFieldInteractable(noiseRefs.rx, interactable);
+            SetInputFieldInteractable(noiseRefs.ry, interactable);
+            SetInputFieldInteractable(noiseRefs.rz, interactable);
+        }
+    }
+
+    private void SetInputFieldInteractable(TMP_InputField inputField, bool interactable)
+    {
+        if (inputField != null)
+        {
+            inputField.interactable = interactable;
+        }
     }
 
     public void AddCamera()
@@ -311,6 +559,9 @@ public class MenuController : MonoBehaviour
         UpdateCameraLabels();
 
         UpdateButtonStates();
+
+
+
 
         Debug.Log($"Added camera group: {newCameraGroup.name}");
     }
@@ -378,6 +629,7 @@ public class MenuController : MonoBehaviour
             }
         }
     }
+
 
     private void StoreInputFieldReference(int cameraId, string groupName, string fieldName, TMP_InputField inputField)
     {
@@ -510,6 +762,230 @@ public class MenuController : MonoBehaviour
         }
     }
 
+    public void AddLight()
+    {
+        LayoutRebuilder.ForceRebuildLayoutImmediate(lightContainer);
+
+        if (lightGroupPrefab == null)
+        {
+            Debug.LogError("LightGroup prefab is null! Please assign it in the Inspector or make sure it exists in Resources/Prefabs.");
+            return;
+        }
+
+        lightCount++;
+
+        InitializeLightValues(lightCount);
+        GameObject newLightGroup = Instantiate(lightGroupPrefab, lightContainer);
+        newLightGroup.name = $"LightGroup_{lightCount}";
+
+        RectTransform rectTransform = newLightGroup.GetComponent<RectTransform>();
+
+        if (rectTransform != null)
+        {
+            // Get the current anchored position
+            Vector2 anchoredPosition = rectTransform.anchoredPosition;
+
+            // Change only the X coordinate to 300
+            anchoredPosition.x = 300f;
+
+            // Apply the modified position back to the RectTransform
+            rectTransform.anchoredPosition = anchoredPosition;
+
+            // Log for debugging
+            Debug.Log($"Set {newLightGroup.name} X position to 300");
+        }
+        else
+        {
+            Debug.LogWarning($"Could not find RectTransform on {newLightGroup.name}");
+        }
+
+        InitializeLightInputFields(newLightGroup, lightCount);
+
+        addedLights.Add(newLightGroup);
+
+        UpdateLightLabels();
+        UpdateLightButtonStates();
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(lightContainer);
+
+        Debug.Log($"Added light group: {newLightGroup.name}");
+    }
+
+    private void InitializeLightValues(int lightId)
+    {
+        lightGroupValues[lightId] = new Dictionary<string, Dictionary<string, float>>();
+        lightInputFields[lightId] = new Dictionary<string, InputFieldRefs>();
+
+        lightGroupValues[lightId]["PositionGroupLight"] = new Dictionary<string, float>();
+        lightGroupValues[lightId]["PositionNoiseGroup"] = new Dictionary<string, float>();
+
+        // Initialize Extrinsics and ExtrinsicsNoise values
+        foreach (string group in new[] { "PositionGroupLight", "PositionNoiseGroup" })
+        {
+            lightGroupValues[lightId][group]["x"] = 0f;
+            lightGroupValues[lightId][group]["y"] = 0f;
+            lightGroupValues[lightId][group]["z"] = 0f;
+            lightGroupValues[lightId][group]["rx"] = 0f;
+            lightGroupValues[lightId][group]["ry"] = 0f;
+            lightGroupValues[lightId][group]["rz"] = 0f;
+        }
+    }
+
+    public void RemoveLight()
+    {
+        if (addedLights.Count <= 0)
+        {
+            Debug.Log("No lights to remove");
+            return;
+        }
+
+        GameObject lastLight = addedLights[addedLights.Count - 1];
+        addedLights.RemoveAt(addedLights.Count - 1);
+
+        if (lightGroupValues.ContainsKey(lightCount))
+        {
+            lightGroupValues.Remove(lightCount);
+            lightInputFields.Remove(lightCount);
+        }
+
+        Destroy(lastLight);
+        lightCount--;
+
+        UpdateLightLabels();
+        UpdateLightButtonStates();
+
+        Debug.Log($"Removed light group. Remaining: {addedLights.Count}");
+    }
+
+    private void UpdateLightLabels()
+    {
+        for (int i = 0; i < addedLights.Count; i++)
+        {
+            Text lightLabel = addedLights[i].GetComponentInChildren<Text>();
+            if (lightLabel != null)
+            {
+                lightLabel.text = $"Light {i + 1}";
+            }
+        }
+    }
+
+    private void UpdateLightButtonStates()
+    {
+        if (removeLightButton != null)
+        {
+            removeLightButton.interactable = (addedLights.Count > 0);
+        }
+    }
+
+    private void InitializeLightInputFields(GameObject lightGroup, int lightId)
+    {
+        // This is already set up correctly
+        lightInputFields[lightId]["PositionGroupLight"] = new InputFieldRefs();
+        lightInputFields[lightId]["PositionNoiseGroup"] = new InputFieldRefs();
+
+        // Find all input fields in the light group
+        TMP_InputField[] inputFields = lightGroup.GetComponentsInChildren<TMP_InputField>(true);
+
+        // For each input field, determine its group and field name
+        foreach (TMP_InputField inputField in inputFields)
+        {
+            // These parts are already working
+            string fieldName = inputField.name.Replace("Input", "").ToLower();
+            string groupName = DetermineLightGroupName(inputField.transform);
+
+            if (!string.IsNullOrEmpty(groupName) && !string.IsNullOrEmpty(fieldName))
+            {
+                StoreLightInputFieldReference(lightId, groupName, fieldName, inputField);
+                SetupLightInputFieldListener(inputField, lightId, groupName, fieldName);
+
+                // Initialize the input field text to "0" if no value exists yet
+                if (lightGroupValues.ContainsKey(lightId) &&
+                    lightGroupValues[lightId].ContainsKey(groupName) &&
+                    lightGroupValues[lightId][groupName].ContainsKey(fieldName))
+                {
+                    inputField.text = lightGroupValues[lightId][groupName][fieldName].ToString();
+                }
+                else
+                {
+                    inputField.text = "0";
+                }
+            }
+        }
+    }
+
+    private string DetermineLightGroupName(Transform inputFieldTransform)
+    {
+        Transform parent = inputFieldTransform.parent;
+
+        while (parent != null)
+        {
+            // Update these checks for the new group names
+            if (parent.name.Contains("PositionGroupLight"))
+                return "PositionGroupLight";
+            if (parent.name.Contains("PositionNoiseGroup"))
+                return "PositionNoiseGroup";
+
+            parent = parent.parent;
+        }
+
+        return "";
+    }
+
+    private void StoreLightInputFieldReference(int lightId, string groupName, string fieldName, TMP_InputField inputField)
+    {
+        if (!lightInputFields.ContainsKey(lightId) || !lightInputFields[lightId].ContainsKey(groupName))
+            return;
+
+        var refs = lightInputFields[lightId][groupName];
+
+        switch (fieldName)
+        {
+            case "x": refs.x = inputField; break;
+            case "y": refs.y = inputField; break;
+            case "z": refs.z = inputField; break;
+            case "rx": refs.rx = inputField; break;
+            case "ry": refs.ry = inputField; break;
+            case "rz": refs.rz = inputField; break;
+        }
+    }
+
+    private void SetupLightInputFieldListener(TMP_InputField inputField, int lightId, string groupName, string fieldName)
+    {
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onValueChanged.AddListener((value) => {
+            OnLightValueChanged(lightId, groupName, fieldName, value);
+        });
+
+        inputField.onEndEdit.AddListener((value) => {
+            OnLightValueChanged(lightId, groupName, fieldName, value);
+        });
+    }
+
+    private void OnLightValueChanged(int lightId, string groupName, string fieldName, string value)
+    {
+        if (!lightGroupValues.ContainsKey(lightId))
+        {
+            Debug.LogError($"Light ID {lightId} not found, initializing it");
+            InitializeLightValues(lightId);
+        }
+
+        if (!lightGroupValues[lightId].ContainsKey(groupName))
+        {
+            Debug.LogError($"Group '{groupName}' not found for Light {lightId}");
+            lightGroupValues[lightId][groupName] = new Dictionary<string, float>();
+        }
+
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float parsedValue))
+        {
+            Debug.LogWarning($"Could not parse '{value}' as float for Light {lightId}.{groupName}.{fieldName}, using 0");
+            parsedValue = 0f;
+        }
+
+        lightGroupValues[lightId][groupName][fieldName] = parsedValue;
+    }
+
     private void RestoreInputValues()
     {
         // Restore values for each camera
@@ -576,6 +1052,86 @@ public class MenuController : MonoBehaviour
                 }
             }
         }
+
+        // Add light value restoration
+        foreach (var lightEntry in lightGroupValues)
+        {
+            int lightId = lightEntry.Key;
+
+            // Skip if we don't have input field references for this light
+            if (!lightInputFields.ContainsKey(lightId))
+                continue;
+
+            foreach (var groupEntry in lightEntry.Value)
+            {
+                string groupName = groupEntry.Key;
+
+                // Skip if we don't have input field references for this group
+                if (!lightInputFields[lightId].ContainsKey(groupName))
+                    continue;
+
+                var inputRefs = lightInputFields[lightId][groupName];
+                var values = groupEntry.Value;
+
+                // For extrinsics and extrinsicsNoise
+                if (groupName.Contains("PositionGroupLight"))
+                {
+                    if (inputRefs.x != null && values.ContainsKey("x"))
+                        inputRefs.x.text = values["x"].ToString();
+
+                    if (inputRefs.y != null && values.ContainsKey("y"))
+                        inputRefs.y.text = values["y"].ToString();
+
+                    if (inputRefs.z != null && values.ContainsKey("z"))
+                        inputRefs.z.text = values["z"].ToString();
+
+                    if (inputRefs.rx != null && values.ContainsKey("rx"))
+                        inputRefs.rx.text = values["rx"].ToString();
+
+                    if (inputRefs.ry != null && values.ContainsKey("ry"))
+                        inputRefs.ry.text = values["ry"].ToString();
+
+                    if (inputRefs.rz != null && values.ContainsKey("rz"))
+                        inputRefs.rz.text = values["rz"].ToString();
+                }
+            }
+        }
+
+        foreach (var groupEntry in motionCenterValues)
+        {
+            string groupName = groupEntry.Key;
+
+            // Skip if we don't have input field references for this group
+            if (!motionCenterInputFields.ContainsKey(groupName))
+                continue;
+
+            var inputRefs = motionCenterInputFields[groupName];
+            var values = groupEntry.Value;
+
+            // Restore values for both CameraArrayCenter and CameraArrayCenterNoise
+            if (inputRefs.x != null && values.ContainsKey("x"))
+                inputRefs.x.text = values["x"].ToString();
+
+            if (inputRefs.y != null && values.ContainsKey("y"))
+                inputRefs.y.text = values["y"].ToString();
+
+            if (inputRefs.z != null && values.ContainsKey("z"))
+                inputRefs.z.text = values["z"].ToString();
+
+            if (inputRefs.rx != null && values.ContainsKey("rx"))
+                inputRefs.rx.text = values["rx"].ToString();
+
+            if (inputRefs.ry != null && values.ContainsKey("ry"))
+                inputRefs.ry.text = values["ry"].ToString();
+
+            if (inputRefs.rz != null && values.ContainsKey("rz"))
+                inputRefs.rz.text = values["rz"].ToString();
+        }
+
+        if (numSamplesField != null)
+        {
+            numSamplesField.text = sampleCount.ToString();
+        }
     }
 
     private void SaveConfiguration()
@@ -584,7 +1140,38 @@ public class MenuController : MonoBehaviour
 
         rootNode.Add("outputPath", new JSONData(outputPathField?.text ?? "~/data/"));
         rootNode.Add("outputFolder", new JSONData(outputFolderField?.text ?? "EER_eye_data"));
-        rootNode.Add("num_samples", new JSONData(int.Parse(numSamplesField?.text ?? "10000")));
+        rootNode.Add("num_samples", new JSONData(sampleCount));
+        rootNode.Add("headless_mode", new JSONData(0));
+
+        rootNode.Add("motion_center", new JSONData(motionCenterToggle != null && motionCenterToggle.isOn ? 1 : 0));
+
+        // Add Camera Array Center
+        JSONNode centerNode = new JSONClass();
+        if (motionCenterValues.ContainsKey("CameraArrayCenter"))
+        {
+            var centerValues = motionCenterValues["CameraArrayCenter"];
+            centerNode.Add("x", new JSONData(centerValues.ContainsKey("x") ? centerValues["x"] : 0f));
+            centerNode.Add("y", new JSONData(centerValues.ContainsKey("y") ? centerValues["y"] : 0f));
+            centerNode.Add("z", new JSONData(centerValues.ContainsKey("z") ? centerValues["z"] : 0f));
+            centerNode.Add("rx", new JSONData(centerValues.ContainsKey("rx") ? centerValues["rx"] : 0f));
+            centerNode.Add("ry", new JSONData(centerValues.ContainsKey("ry") ? centerValues["ry"] : 0f));
+            centerNode.Add("rz", new JSONData(centerValues.ContainsKey("rz") ? centerValues["rz"] : 0f));
+        }
+        rootNode.Add("camera_array_center", centerNode);
+
+        // Add Camera Array Center Noise
+        JSONNode centerNoiseNode = new JSONClass();
+        if (motionCenterValues.ContainsKey("CameraArrayCenterNoise"))
+        {
+            var centerNoiseValues = motionCenterValues["CameraArrayCenterNoise"];
+            centerNoiseNode.Add("x", new JSONData(centerNoiseValues.ContainsKey("x") ? centerNoiseValues["x"] : 0f));
+            centerNoiseNode.Add("y", new JSONData(centerNoiseValues.ContainsKey("y") ? centerNoiseValues["y"] : 0f));
+            centerNoiseNode.Add("z", new JSONData(centerNoiseValues.ContainsKey("z") ? centerNoiseValues["z"] : 0f));
+            centerNoiseNode.Add("rx", new JSONData(centerNoiseValues.ContainsKey("rx") ? centerNoiseValues["rx"] : 0f));
+            centerNoiseNode.Add("ry", new JSONData(centerNoiseValues.ContainsKey("ry") ? centerNoiseValues["ry"] : 0f));
+            centerNoiseNode.Add("rz", new JSONData(centerNoiseValues.ContainsKey("rz") ? centerNoiseValues["rz"] : 0f));
+        }
+        rootNode.Add("camera_array_center_noise", centerNoiseNode);
 
         // Create cameras array
         JSONArray camerasArray = new JSONArray();
@@ -613,6 +1200,8 @@ public class MenuController : MonoBehaviour
                 intrinsicsNode.Add("cy", new JSONData(intrinsics.ContainsKey("cy") ? intrinsics["cy"] : 0f));
                 intrinsicsNode.Add("w", new JSONData(intrinsics.ContainsKey("width") ? intrinsics["width"] : 0f));
                 intrinsicsNode.Add("h", new JSONData(intrinsics.ContainsKey("height") ? intrinsics["height"] : 0f));
+                intrinsicsNode.Add("sensor_width", new JSONData(1.6f));
+                intrinsicsNode.Add("sensor_height", new JSONData(1.2f));
             }
             cameraNode.Add("intrinsics", intrinsicsNode);
 
@@ -661,10 +1250,74 @@ public class MenuController : MonoBehaviour
             camerasArray.Add(cameraNode);
         }
 
+        // Create lights array
+        JSONArray lightsArray = new JSONArray();
+        rootNode.Add("lights", lightsArray);
+
+        // Add configuration for each light
+        for (int i = 1; i <= lightCount; i++)
+        {
+            if (!lightGroupValues.ContainsKey(i))
+                continue;
+
+            JSONNode lightNode = new JSONClass();
+            lightNode.Add("name", new JSONData($"point_light_{i}"));
+            lightNode.Add("type", new JSONData("point"));
+            lightNode.Add("array_mounted", new JSONData(1)); // Default value
+
+            var lightValues = lightGroupValues[i];
+
+            // Add extrinsics
+            JSONNode extrinsicsNode = new JSONClass();
+            if (lightValues.ContainsKey("PositionGroupLight"))
+            {
+                var extrinsics = lightValues["PositionGroupLight"];
+                extrinsicsNode.Add("x", new JSONData(extrinsics.ContainsKey("x") ? extrinsics["x"] : 0f));
+                extrinsicsNode.Add("y", new JSONData(extrinsics.ContainsKey("y") ? extrinsics["y"] : 0f));
+                extrinsicsNode.Add("z", new JSONData(extrinsics.ContainsKey("z") ? extrinsics["z"] : 0f));
+                extrinsicsNode.Add("rx", new JSONData(extrinsics.ContainsKey("rx") ? extrinsics["rx"] : 0f));
+                extrinsicsNode.Add("ry", new JSONData(extrinsics.ContainsKey("ry") ? extrinsics["ry"] : 0f));
+                extrinsicsNode.Add("rz", new JSONData(extrinsics.ContainsKey("rz") ? extrinsics["rz"] : 0f));
+            }
+            lightNode.Add("position", extrinsicsNode);
+
+            // Add extrinsics noise
+            JSONNode extrinsicsNoiseNode = new JSONClass();
+            if (lightValues.ContainsKey("PositionNoiseGroup"))
+            {
+                var extrinsicsNoise = lightValues["PositionNoiseGroup"];
+                extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
+                extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
+                extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
+                extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
+                extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
+                extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
+            }
+            lightNode.Add("position_noise", extrinsicsNoiseNode);
+
+            // Add hardcoded properties (as mentioned, we're ignoring detailed properties for now)
+            JSONNode propertiesNode = new JSONClass();
+            propertiesNode.Add("range", new JSONData(100.0f));
+            propertiesNode.Add("intensity", new JSONData(0.3f));
+
+            JSONNode colorNode = new JSONClass();
+            colorNode.Add("r", new JSONData(1.0f));
+            colorNode.Add("g", new JSONData(1.0f));
+            colorNode.Add("b", new JSONData(1.0f));
+            propertiesNode.Add("color", colorNode);
+
+            propertiesNode.Add("shadows", new JSONData("soft"));
+            propertiesNode.Add("shadow_bias", new JSONData(0.05f));
+
+            lightNode.Add("properties", propertiesNode);
+
+            lightsArray.Add(lightNode);
+        }
+
         // Save to file
         try
         {
-            string path = Path.Combine(Application.dataPath, "..", "this_is_my_config.json");
+            string path = Path.Combine(Application.dataPath, "..", "..", "this_is_config.json");
             File.WriteAllText(path, rootNode.ToJSON(4)); // Using indent of 4 for pretty printing
             Debug.Log($"Configuration saved successfully to: {path}");
             Debug.Log($"JSON Content:\n{rootNode.ToJSON(4)}");
