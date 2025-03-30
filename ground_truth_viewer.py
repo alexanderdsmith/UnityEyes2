@@ -37,6 +37,9 @@ for json_file in json_files:
     if not m:
         continue
     image_prefix = m.group(1)  # This number will be used as the leading number for the images.
+    # Process only image 131
+    if image_prefix != "136":
+        continue
     json_path = os.path.join(img_folder, json_file)
     
     # Load JSON data
