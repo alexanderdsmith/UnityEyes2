@@ -114,6 +114,16 @@ public class MenuController : MonoBehaviour
     private Dictionary<int, Dictionary<string, InputFieldRefs>> lightInputFields =
         new Dictionary<int, Dictionary<string, InputFieldRefs>>();
 
+    private Dictionary<int, Toggle> lightArrayMountedToggles = new Dictionary<int, Toggle>();
+
+    private class LightPropertyRefs
+    {
+        public TMP_InputField range, intensity;
+        public TMP_InputField colorR, colorG, colorB;
+    }
+
+    private Dictionary<int, LightPropertyRefs> lightPropertyFields = new Dictionary<int, LightPropertyRefs>();
+
     // ---------------------------------------------------------
     // Parameter Distribution
     // ---------------------------------------------------------
@@ -844,6 +854,16 @@ public class MenuController : MonoBehaviour
             lightGroupValues[lightId][group]["ry"] = 0f;
             lightGroupValues[lightId][group]["rz"] = 0f;
         }
+
+        lightGroupValues[lightId]["Properties"] = new Dictionary<string, float>();
+        lightGroupValues[lightId]["Properties"]["range"] = 100.0f;
+        lightGroupValues[lightId]["Properties"]["intensity"] = 0.3f;
+        lightGroupValues[lightId]["Properties"]["colorR"] = 1.0f;
+        lightGroupValues[lightId]["Properties"]["colorG"] = 1.0f;
+        lightGroupValues[lightId]["Properties"]["colorB"] = 1.0f;
+        lightGroupValues[lightId]["Properties"]["shadow_bias"] = 0.05f;
+
+        lightArrayMountedToggles[lightId] = null;
     }
 
     public void RemoveLight()
@@ -894,17 +914,13 @@ public class MenuController : MonoBehaviour
 
     private void InitializeLightInputFields(GameObject lightGroup, int lightId)
     {
-        // This is already set up correctly
         lightInputFields[lightId]["PositionGroupLight"] = new InputFieldRefs();
         lightInputFields[lightId]["PositionNoiseGroup"] = new InputFieldRefs();
 
-        // Find all input fields in the light group
         TMP_InputField[] inputFields = lightGroup.GetComponentsInChildren<TMP_InputField>(true);
 
-        // For each input field, determine its group and field name
         foreach (TMP_InputField inputField in inputFields)
         {
-            // These parts are already working
             string fieldName = inputField.name.Replace("Input", "").ToLower();
             string groupName = DetermineLightGroupName(inputField.transform);
 
@@ -913,7 +929,6 @@ public class MenuController : MonoBehaviour
                 StoreLightInputFieldReference(lightId, groupName, fieldName, inputField);
                 SetupLightInputFieldListener(inputField, lightId, groupName, fieldName);
 
-                // Initialize the input field text to "0" if no value exists yet
                 if (lightGroupValues.ContainsKey(lightId) &&
                     lightGroupValues[lightId].ContainsKey(groupName) &&
                     lightGroupValues[lightId][groupName].ContainsKey(fieldName))
@@ -926,7 +941,98 @@ public class MenuController : MonoBehaviour
                 }
             }
         }
+
+        Toggle arrayMountedToggle = lightGroup.transform.Find("ArrayMounted").GetComponent<Toggle>();
+        if (arrayMountedToggle != null)
+        {
+            lightArrayMountedToggles[lightId] = arrayMountedToggle;
+            arrayMountedToggle.onValueChanged.AddListener((value) => {
+                OnArrayMountedChanged(lightId, value);
+            });
+            arrayMountedToggle.isOn = true; 
+        }
+
+        lightPropertyFields[lightId] = new LightPropertyRefs();
+
+        TMP_InputField rangeInput = lightGroup.transform.Find("PropertiesGroup/RangeInput").GetComponent<TMP_InputField>();
+        if (rangeInput != null)
+        {
+            lightPropertyFields[lightId].range = rangeInput;
+            SetupPropertyInputListener(rangeInput, lightId, "range");
+            rangeInput.text = "100"; 
+        }
+
+        TMP_InputField intensityInput = lightGroup.transform.Find("PropertiesGroup/IntensityInput").GetComponent<TMP_InputField>();
+        if (intensityInput != null)
+        {
+            lightPropertyFields[lightId].intensity = intensityInput;
+            SetupPropertyInputListener(intensityInput, lightId, "intensity");
+            intensityInput.text = "0.3"; 
+        }
+
+        TMP_InputField colorRInput = lightGroup.transform.Find("PropertiesGroup/ColorRInput").GetComponent<TMP_InputField>();
+        if (colorRInput != null)
+        {
+            lightPropertyFields[lightId].colorR = colorRInput;
+            SetupPropertyInputListener(colorRInput, lightId, "colorR");
+            colorRInput.text = "1";
+        }
+
+        TMP_InputField colorGInput = lightGroup.transform.Find("PropertiesGroup/ColorGInput").GetComponent<TMP_InputField>();
+        if (colorGInput != null)
+        {
+            lightPropertyFields[lightId].colorG = colorGInput;
+            SetupPropertyInputListener(colorGInput, lightId, "colorG");
+            colorGInput.text = "1";
+        }
+
+        TMP_InputField colorBInput = lightGroup.transform.Find("PropertiesGroup/ColorBInput").GetComponent<TMP_InputField>();
+        if (colorBInput != null)
+        {
+            lightPropertyFields[lightId].colorB = colorBInput;
+            SetupPropertyInputListener(colorBInput, lightId, "colorB");
+            colorBInput.text = "1";
+        }
     }
+
+    private void SetupPropertyInputListener(TMP_InputField inputField, int lightId, string propertyName)
+    {
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onEndEdit.AddListener((value) => {
+            OnLightPropertyChanged(lightId, propertyName, value);
+        });
+    }
+
+    private void OnLightPropertyChanged(int lightId, string propertyName, string value)
+    {
+        if (!lightGroupValues.ContainsKey(lightId) || !lightGroupValues[lightId].ContainsKey("Properties"))
+            return;
+
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out float parsedValue))
+        {
+            switch (propertyName)
+            {
+                case "range": parsedValue = 100.0f; break;
+                case "intensity": parsedValue = 0.3f; break;
+                case "colorR":
+                case "colorG":
+                case "colorB": parsedValue = 1.0f; break;
+                case "shadow_bias": parsedValue = 0.05f; break;
+                default: parsedValue = 0f; break;
+            }
+        }
+
+        lightGroupValues[lightId]["Properties"][propertyName] = parsedValue;
+        Debug.Log($"Updated Light {lightId} property {propertyName} to {parsedValue}");
+    }
+
+    private void OnArrayMountedChanged(int lightId, bool isOn)
+    {
+        Debug.Log($"Light {lightId} array mounted set to {isOn}");
+    }
+
 
     private string DetermineLightGroupName(Transform inputFieldTransform)
     {
@@ -934,7 +1040,6 @@ public class MenuController : MonoBehaviour
 
         while (parent != null)
         {
-            // Update these checks for the new group names
             if (parent.name.Contains("PositionGroupLight"))
                 return "PositionGroupLight";
             if (parent.name.Contains("PositionNoiseGroup"))
@@ -1003,7 +1108,6 @@ public class MenuController : MonoBehaviour
 
     private void RestoreInputValues()
     {
-        // Restore values for each camera
         foreach (var cameraEntry in cameraGroupValues)
         {
             int cameraId = cameraEntry.Key;
@@ -1110,6 +1214,33 @@ public class MenuController : MonoBehaviour
                         inputRefs.rz.text = values["rz"].ToString();
                 }
             }
+        }
+
+        foreach (var lightEntry in lightGroupValues)
+        {
+            int lightId = lightEntry.Key;
+
+            // Skip if no property fields
+            if (!lightPropertyFields.ContainsKey(lightId))
+                continue;
+
+            var properties = lightEntry.Value["Properties"];
+            var propertyRefs = lightPropertyFields[lightId];
+
+            if (propertyRefs.range != null && properties.ContainsKey("range"))
+                propertyRefs.range.text = properties["range"].ToString();
+
+            if (propertyRefs.intensity != null && properties.ContainsKey("intensity"))
+                propertyRefs.intensity.text = properties["intensity"].ToString();
+
+            if (propertyRefs.colorR != null && properties.ContainsKey("colorR"))
+                propertyRefs.colorR.text = properties["colorR"].ToString();
+
+            if (propertyRefs.colorG != null && properties.ContainsKey("colorG"))
+                propertyRefs.colorG.text = properties["colorG"].ToString();
+
+            if (propertyRefs.colorB != null && properties.ContainsKey("colorB"))
+                propertyRefs.colorB.text = properties["colorB"].ToString();
         }
 
         foreach (var groupEntry in motionCenterValues)
@@ -1310,22 +1441,46 @@ public class MenuController : MonoBehaviour
             }
             lightNode.Add("position_noise", extrinsicsNoiseNode);
 
-            // Add hardcoded properties (as mentioned, we're ignoring detailed properties for now)
             JSONNode propertiesNode = new JSONClass();
-            propertiesNode.Add("range", new JSONData(100.0f));
-            propertiesNode.Add("intensity", new JSONData(0.3f));
+            if (lightGroupValues[i].ContainsKey("Properties"))
+            {
+                var properties = lightGroupValues[i]["Properties"];
 
-            JSONNode colorNode = new JSONClass();
-            colorNode.Add("r", new JSONData(1.0f));
-            colorNode.Add("g", new JSONData(1.0f));
-            colorNode.Add("b", new JSONData(1.0f));
-            propertiesNode.Add("color", colorNode);
+                float range = properties.ContainsKey("range") ? properties["range"] : 100.0f;
+                propertiesNode.Add("range", new JSONData(range));
 
-            propertiesNode.Add("shadows", new JSONData("soft"));
-            propertiesNode.Add("shadow_bias", new JSONData(0.05f));
+                float intensity = properties.ContainsKey("intensity") ? properties["intensity"] : 0.3f;
+                propertiesNode.Add("intensity", new JSONData(intensity));
 
+                JSONNode colorNode = new JSONClass();
+                float r = properties.ContainsKey("colorR") ? properties["colorR"] : 1.0f;
+                float g = properties.ContainsKey("colorG") ? properties["colorG"] : 1.0f;
+                float b = properties.ContainsKey("colorB") ? properties["colorB"] : 1.0f;
+                colorNode.Add("r", new JSONData(r));
+                colorNode.Add("g", new JSONData(g));
+                colorNode.Add("b", new JSONData(b));
+                propertiesNode.Add("color", colorNode);
+
+                propertiesNode.Add("shadows", new JSONData("soft"));
+
+                float shadowBias = properties.ContainsKey("shadow_bias") ? properties["shadow_bias"] : 0.05f;
+                propertiesNode.Add("shadow_bias", new JSONData(shadowBias));
+            }
+            else
+            {
+                propertiesNode.Add("range", new JSONData(100.0f));
+                propertiesNode.Add("intensity", new JSONData(0.3f));
+
+                JSONNode colorNode = new JSONClass();
+                colorNode.Add("r", new JSONData(1.0f));
+                colorNode.Add("g", new JSONData(1.0f));
+                colorNode.Add("b", new JSONData(1.0f));
+                propertiesNode.Add("color", colorNode);
+
+                propertiesNode.Add("shadows", new JSONData("soft"));
+                propertiesNode.Add("shadow_bias", new JSONData(0.05f));
+            }
             lightNode.Add("properties", propertiesNode);
-
             lightsArray.Add(lightNode);
         }
 

@@ -1,7 +1,7 @@
 { 
           "outputPath": "~/data/", 
           "outputFolder": "EER_eye_data", 
-          "num_samples": 3000, 
+          "num_samples": 5000, 
           "headless_mode": 0, 
           "motion_center": 1, 
           "camera_array_center": { 
@@ -37,56 +37,18 @@
               "intrinsics_noise": { 
                 "fx": 0, 
                 "fy": 0, 
-                "cx": 0, 
-                "cy": 0, 
-                "w": 0, 
-                "h": 0
-                }, 
-              "extrinsics": { 
-                "x": -0.022, 
-                "y": 0.008, 
-                "z": 0.253, 
-                "rx": -26.341, 
-                "ry": 23.9, 
-                "rz": -40
-                }, 
-              "extrinsics_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0, 
-                "rx": 0, 
-                "ry": 0, 
-                "rz": 0
-                }
-              }, 
-            { 
-              "name": "cam1", 
-              "noise_distribution": "uniform", 
-              "intrinsics": { 
-                "fx": 584.89, 
-                "fy": 584.89, 
-                "cx": 320, 
-                "cy": 240, 
-                "w": 640, 
-                "h": 480, 
-                "sensor_width": 1.6, 
-                "sensor_height": 1.2
-                }, 
-              "intrinsics_noise": { 
-                "fx": 0, 
-                "fy": 0, 
                 "cx": 45, 
                 "cy": 0, 
                 "w": 0, 
                 "h": 0
                 }, 
               "extrinsics": { 
-                "x": -0.022, 
-                "y": 0.052, 
+                "x": 0.022, 
+                "y": 0.008, 
                 "z": 0.253, 
-                "rx": 26.341, 
-                "ry": 23.9, 
-                "rz": -140
+                "rx": -26.341, 
+                "ry": -23.9, 
+                "rz": 40
                 }, 
               "extrinsics_noise": { 
                 "x": 0, 
@@ -115,7 +77,7 @@
                 "x": 0, 
                 "y": 0, 
                 "z": 0, 
-                "rx": 6, 
+                "rx": 0, 
                 "ry": 0, 
                 "rz": 0
                 }, 
