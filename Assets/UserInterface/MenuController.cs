@@ -13,6 +13,12 @@ public class MenuController : MonoBehaviour
     [SerializeField] private Button closeButton;
 
     // ---------------------------------------------------------
+    // Server Reference
+    // ---------------------------------------------------------
+    [Header("Reference to Server")]
+    [SerializeField] private SynthesEyesServer synthesEyesServer;
+
+    // ---------------------------------------------------------
     // Scrollable Area
     // ---------------------------------------------------------
     [Header("Scrollable Area")]
@@ -250,6 +256,15 @@ public class MenuController : MonoBehaviour
         if (saveButton != null)
         {
             saveButton.onClick.AddListener(SaveConfiguration);
+        }
+
+        if (synthesEyesServer == null)
+        {
+            synthesEyesServer = FindFirstObjectByType<SynthesEyesServer>();
+            if (synthesEyesServer == null)
+            {
+                Debug.LogWarning("SynthesEyesServer not found. Automatic rendering updates won't work.");
+            }
         }
 
         // Add listeners for all UI elements
@@ -1314,19 +1329,53 @@ public class MenuController : MonoBehaviour
             lightsArray.Add(lightNode);
         }
 
+        JSONNode eyeParametersNode = new JSONClass();
+
+        JSONNode pupilSizeRangeNode = new JSONClass();
+        pupilSizeRangeNode.Add("min", new JSONData(0.2f));
+        pupilSizeRangeNode.Add("max", new JSONData(0.2f));
+        eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
+
+        // Add iris size range
+        JSONNode irisSizeRangeNode = new JSONClass();
+        irisSizeRangeNode.Add("min", new JSONData(10.0f));
+        irisSizeRangeNode.Add("max", new JSONData(10.0f));
+        eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
+
+        // Add default orientation and noise
+        eyeParametersNode.Add("default_yaw", new JSONData(0f));
+        eyeParametersNode.Add("default_pitch", new JSONData(0f));
+        eyeParametersNode.Add("yaw_noise", new JSONData(20f));
+        eyeParametersNode.Add("pitch_noise", new JSONData(15f));
+
+        // Add the eye parameters node to the root
+        rootNode.Add("eye_parameters", eyeParametersNode);
+
         // Save to file
         try
         {
-            string path = Path.Combine(Application.dataPath, "..", "..", "this_is_config.json");
+            string path = Path.Combine(Application.dataPath, "..", "camera_config.json");
             File.WriteAllText(path, rootNode.ToJSON(4)); // Using indent of 4 for pretty printing
             Debug.Log($"Configuration saved successfully to: {path}");
-            Debug.Log($"JSON Content:\n{rootNode.ToJSON(4)}");
+
+            // Notify SynthesEyesServer to reload configuration
+            if (synthesEyesServer != null)
+            {
+                synthesEyesServer.ReloadConfiguration(path);
+                Debug.Log("Notified SynthesEyesServer to reload configuration");
+            }
+            else
+            {
+                Debug.LogWarning("SynthesEyesServer reference not set. Cannot auto-update scene.");
+            }
         }
         catch (System.Exception e)
         {
             Debug.LogError($"Error saving configuration: {e.Message}");
         }
     }
+
+
 
     private Transform FindChildByName(Transform parent, string childName)
     {

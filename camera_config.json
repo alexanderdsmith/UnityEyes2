@@ -1,290 +1,149 @@
 { 
-  "output_path": "~/data/imgs",
-  "num_samples": 10000,
-  "headless_mode": true,
-  "motion_center": true, 
-  "camera_array_center": {
-    "x": 0,
-    "y": -0.03,
-    "z": 0.31,
-    "rx": 0,
-    "ry": 180,
-    "rz": 0
-  },
-  "camera_array_noise": { 
-    "x": 0.01,
-    "y": 0.01,
-    "z": 0.01,
-    "rx": 1,
-    "ry": 1,
-    "rz": 20
-  },
-  "cameras": [ 
-    { 
-      "name": "cam_1", 
-      "noise_distribution": "uniform", 
-      "is_orthographic": false,
-      "intrinsics": { 
-        "fx": 584.89, 
-        "fy": 584.89, 
-        "cx": 320, 
-        "cy": 240, 
-        "w": 640, 
-        "h": 480,
-        "sensor_width": 1.6,
-        "sensor_height": 1.2
-      }, 
-      "intrinsics_noise": { 
-        "fx": 0, 
-        "fy": 0, 
-        "cx": 0, 
-        "cy": 0, 
-        "w": 0, 
-        "h": 0
-      }, 
-      "extrinsics": { 
-        "x": -0.022, 
-        "y": 0.008,
-        "z": 0.253,
-        "rx": -26.341, 
-        "ry": 23.9,
-        "rz": -40
-      },
-      "extrinsics_noise": { 
-        "x": 0, 
-        "y": 0, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      }
-    },
-    { 
-      "name": "cam_2", 
-      "noise_distribution": "uniform", 
-      "intrinsics": { 
-        "fx": 584.89, 
-        "fy": 584.89, 
-        "cx": 320, 
-        "cy": 240, 
-        "w": 640, 
-        "h": 480,
-        "sensor_width": 1.6,
-        "sensor_height": 1.2
-      }, 
-      "intrinsics_noise": { 
-        "fx": 0, 
-        "fy": 0, 
-        "cx": 45, 
-        "cy": 0, 
-        "w": 0, 
-        "h": 0
-      }, 
-      "extrinsics": { 
-        "x": 0.022, 
-        "y": 0.008,
-        "z": 0.253,
-        "rx": -26.341,
-        "ry": -23.9, 
-        "rz": 40
-      },
-      "extrinsics_noise": { 
-        "x": 0, 
-        "y": 0, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      }
-    },
-    { 
-      "name": "cam_3", 
-      "noise_distribution": "uniform", 
-      "intrinsics": { 
-        "fx": 584.89, 
-        "fy": 584.89, 
-        "cx": 320, 
-        "cy": 240, 
-        "w": 640, 
-        "h": 480,
-        "sensor_width": 1.6,
-        "sensor_height": 1.2
-      }, 
-      "intrinsics_noise": { 
-        "fx": 0, 
-        "fy": 0, 
-        "cx": 45, 
-        "cy": 0, 
-        "w": 0, 
-        "h": 0
-      }, 
-      "extrinsics": { 
-        "x": -0.022, 
-        "y": 0.052,
-        "z": 0.253,
-        "rx": 26.341, 
-        "ry": 23.9,
-        "rz": -140
-      },
-      "extrinsics_noise": { 
-        "x": 0, 
-        "y": 0, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      }
-    },
-    { 
-      "name": "cam_4", 
-      "noise_distribution": "uniform", 
-      "intrinsics": { 
-        "fx": 584.89, 
-        "fy": 584.89, 
-        "cx": 320, 
-        "cy": 240, 
-        "w": 640, 
-        "h": 480,
-        "sensor_width": 1.6,
-        "sensor_height": 1.2
-      }, 
-      "intrinsics_noise": { 
-        "fx": 0, 
-        "fy": 0, 
-        "cx": 45, 
-        "cy": 0, 
-        "w": 0, 
-        "h": 0
-      }, 
-      "extrinsics": { 
-        "x": 0.022, 
-        "y": 0.052,
-        "z": 0.253,
-        "rx": 26.341,
-        "ry": -23.9,
-        "rz": 140
-      },
-      "extrinsics_noise": { 
-        "x": 0, 
-        "y": 0, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      }
-    }
-  ],
-  "lights": [
-    {
-      "name": "point_light_1",
-      "type": "point",
-      "array_mounted": true,
-      "extrinsics": { 
-        "x": -0.010, 
-        "y": 0.008,
-        "z": 0.253,
-        "rx": -26.341, 
-        "ry": 23.9,
-        "rz": -40
-      },
-      "extrinsics_noise": { 
-        "x": 0, 
-        "y": 0, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      },
-      "properties": {
-        "range": 100.0,
-        "intensity": 0.3,
-        "color": {
-          "r": 1.0,
-          "g": 1.0,
-          "b": 1.0
-        },
-        "shadows": "soft",
-        "shadow_bias": 0.05
-      }
-    },
-    {
-      "name": "point_light_2",
-      "type": "point",
-      "array_mounted": true,
-      "extrinsics": { 
-        "x": 0.022, 
-        "y": 0.008,
-        "z": 0.253,
-        "rx": -26.341,
-        "ry": -23.9, 
-        "rz": 40
-      },
-      "extrinsics_noise": { 
-        "x": 0.045, 
-        "y": 0.006, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      },
-      "properties": {
-        "range": 80.0,
-        "intensity": 0.25,
-        "color": {
-          "r": 0.9,
-          "g": 0.9,
-          "b": 1.0
-        },
-        "shadows": "soft",
-        "shadow_bias": 0.05
-      }
-    },
-    {
-      "name": "point_light_3",
-      "type": "point",
-      "array_mounted": false,
-      "extrinsics": { 
-        "x": 0.022, 
-        "y": 0.008,
-        "z": 0.253,
-        "rx": -26.341,
-        "ry": -23.9, 
-        "rz": 40
-      },
-      "extrinsics_noise": { 
-        "x": 0.045, 
-        "y": 0.006, 
-        "z": 0, 
-        "rx": 6, 
-        "ry": 0, 
-        "rz": 0
-      },
-      "properties": {
-        "range": 80.0,
-        "intensity": 0.25,
-        "color": {
-          "r": 0.9,
-          "g": 0.9,
-          "b": 1.0
-        },
-        "shadows": "soft",
-        "shadow_bias": 0.05
-      }
-    }
-
-  ],
-  "eye_parameters": {
-    "pupil_size_range": {
-      "min": 0.2,
-      "max": 0.2
-    },
-    "iris_size_range": {
-      "min": 10.0,
-      "max": 10.0
-    },
-    "default_yaw": 0,
-    "default_pitch": 0,
-    "yaw_noise": 20,
-    "pitch_noise": 15
-  }
-}
+          "outputPath": "~/data/", 
+          "outputFolder": "EER_eye_data", 
+          "num_samples": 3000, 
+          "headless_mode": 0, 
+          "motion_center": 1, 
+          "camera_array_center": { 
+            "x": 0, 
+            "y": -0.03, 
+            "z": 0.31, 
+            "rx": 0, 
+            "ry": 180, 
+            "rz": 0
+            }, 
+          "camera_array_center_noise": { 
+            "x": 0.01, 
+            "y": 0.01, 
+            "z": 0.01, 
+            "rx": 1, 
+            "ry": 1, 
+            "rz": 20
+            }, 
+          "cameras": [ 
+            { 
+              "name": "cam0", 
+              "noise_distribution": "uniform", 
+              "intrinsics": { 
+                "fx": 584.89, 
+                "fy": 584.89, 
+                "cx": 320, 
+                "cy": 240, 
+                "w": 640, 
+                "h": 480, 
+                "sensor_width": 1.6, 
+                "sensor_height": 1.2
+                }, 
+              "intrinsics_noise": { 
+                "fx": 0, 
+                "fy": 0, 
+                "cx": 0, 
+                "cy": 0, 
+                "w": 0, 
+                "h": 0
+                }, 
+              "extrinsics": { 
+                "x": -0.022, 
+                "y": 0.008, 
+                "z": 0.253, 
+                "rx": -26.341, 
+                "ry": 23.9, 
+                "rz": -40
+                }, 
+              "extrinsics_noise": { 
+                "x": 0, 
+                "y": 0, 
+                "z": 0, 
+                "rx": 0, 
+                "ry": 0, 
+                "rz": 0
+                }
+              }, 
+            { 
+              "name": "cam1", 
+              "noise_distribution": "uniform", 
+              "intrinsics": { 
+                "fx": 584.89, 
+                "fy": 584.89, 
+                "cx": 320, 
+                "cy": 240, 
+                "w": 640, 
+                "h": 480, 
+                "sensor_width": 1.6, 
+                "sensor_height": 1.2
+                }, 
+              "intrinsics_noise": { 
+                "fx": 0, 
+                "fy": 0, 
+                "cx": 45, 
+                "cy": 0, 
+                "w": 0, 
+                "h": 0
+                }, 
+              "extrinsics": { 
+                "x": -0.022, 
+                "y": 0.052, 
+                "z": 0.253, 
+                "rx": 26.341, 
+                "ry": 23.9, 
+                "rz": -140
+                }, 
+              "extrinsics_noise": { 
+                "x": 0, 
+                "y": 0, 
+                "z": 0, 
+                "rx": 6, 
+                "ry": 0, 
+                "rz": 0
+                }
+              }
+            ], 
+          "lights": [ 
+            { 
+              "name": "point_light_1", 
+              "type": "point", 
+              "array_mounted": 1, 
+              "position": { 
+                "x": -0.01, 
+                "y": 0.008, 
+                "z": 0.253, 
+                "rx": -26.341, 
+                "ry": 23.9, 
+                "rz": -40
+                }, 
+              "position_noise": { 
+                "x": 0, 
+                "y": 0, 
+                "z": 0, 
+                "rx": 6, 
+                "ry": 0, 
+                "rz": 0
+                }, 
+              "properties": { 
+                "range": 100, 
+                "intensity": 0.3, 
+                "color": { 
+                  "r": 1, 
+                  "g": 1, 
+                  "b": 1
+                  }, 
+                "shadows": "soft", 
+                "shadow_bias": 0.05
+                }
+              }
+            ], 
+          "eye_parameters": { 
+            "pupil_size_range": { 
+              "min": 0.2, 
+              "max": 0.2
+              }, 
+            "iris_size_range": { 
+              "min": 10, 
+              "max": 10
+              }, 
+            "default_yaw": 0, 
+            "default_pitch": 0, 
+            "yaw_noise": 20, 
+            "pitch_noise": 15
+            }
+          }

@@ -186,7 +186,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
             if (rootNode["motion_center"] != null)
             {
-                useMotionCenter = rootNode["motion_center"].AsBool;
+                useMotionCenter = rootNode["motion_center"].AsInt == 1;
                 Debug.Log($"Motion center mode: {useMotionCenter}");
             }
 
@@ -257,9 +257,10 @@ public class SynthesEyesServer : MonoBehaviour{
 
             if (rootNode["headless_mode"] != null)
             {
-                headlessMode = rootNode["headless_mode"].AsBool;
+                headlessMode = rootNode["headless_mode"].AsInt == 1;
                 Debug.Log($"Headless mode: {headlessMode}");
             }
+
             if (rootNode["eye_parameters"] != null)
             {
                 JSONNode eyeParamsNode = rootNode["eye_parameters"];
@@ -527,14 +528,14 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             JSONNode lightNode = lightsArray[i];
             string lightName = lightNode["name"] != null ? lightNode["name"].Value : $"PointLight_{i}";
-            bool isArrayMounted = lightNode["array_mounted"] != null ? lightNode["array_mounted"].AsBool : false;
+            bool isArrayMounted = lightNode["array_mounted"] != null ? lightNode["array_mounted"].AsInt == 1 : false;
 
             GameObject lightObj = new GameObject(lightName);
             Light pointLight = lightObj.AddComponent<Light>();
 
             pointLight.type = LightType.Point;
 
-            JSONNode extrinsics = lightNode["extrinsics"];
+            JSONNode extrinsics = lightNode["position"];
             Vector3 position = Vector3.zero;
             Vector3 rotation = Vector3.zero;
 
@@ -799,6 +800,17 @@ public class SynthesEyesServer : MonoBehaviour{
 
         if (Input.GetKeyUp("h"))
             GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled = !GameObject.Find("GUI Canvas").GetComponent<Canvas>().enabled;
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            Debug.Log("Escape key pressed - quitting application");
+            Application.Quit();
+
+            // In Unity Editor, this will not quit the play mode, so add this for testing
+#if UNITY_EDITOR
+    UnityEditor.EditorApplication.isPlaying = false;
+#endif
+        }
     }
 
     private void SwitchCamera(int direction) {
@@ -811,7 +823,7 @@ public class SynthesEyesServer : MonoBehaviour{
         cameraList[currentCameraIndex].tag = "MainCamera";
     }
 
-    private void ToggleOutputPreview() {
+    public void ToggleOutputPreview() {
         visualizationManager.ToggleVisualization();
     }
 
@@ -905,6 +917,86 @@ public class SynthesEyesServer : MonoBehaviour{
     {
         framesSaved = 0;
         Debug.Log("Frame counter reset. Ready to collect new samples.");
+    }
+
+    public void ReloadConfiguration(string configPath = null)
+    {
+        // Use provided path or default
+        string path = configPath != null ? configPath : jsonConfigPath;
+
+        Debug.Log($"Reloading configuration from: {path}");
+
+        // Clean up current cameras and lights
+        CleanupCurrentScene();
+
+        // Reset frame counter
+        ResetFrameCounter();
+
+        // Load new configuration
+        if (File.Exists(path))
+        {
+            LoadCamerasFromConfig(path);
+
+            if (eyeParameters != null)
+            {
+                eyeball.SetPupilSizeRange(eyeParameters.pupilSizeRange);
+                eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
+            }
+
+            // Randomize the scene to apply new settings
+            RandomizeScene();
+
+            // Toggle preview to refresh the view
+            ToggleOutputPreview();
+            ToggleOutputPreview();
+
+            Debug.Log("Configuration reloaded successfully");
+        }
+        else
+        {
+            Debug.LogError($"Config file not found at: {path}");
+        }
+    }
+
+    private void CleanupCurrentScene()
+    {
+        // Destroy current cameras
+        foreach (Camera cam in cameraList)
+        {
+            if (cam != null)
+            {
+                Destroy(cam.gameObject);
+            }
+        }
+        cameraList.Clear();
+        cameraOriginalPositions.Clear();
+        cameraOriginalRotations.Clear();
+        cameraExtrinsicsPositionNoise.Clear();
+        cameraExtrinsicsRotationNoise.Clear();
+        cameraOriginalIntrinsics.Clear();
+
+        // Destroy current lights
+        foreach (Light light in pointLightList)
+        {
+            if (light != null)
+            {
+                Destroy(light.gameObject);
+            }
+        }
+        pointLightList.Clear();
+        pointLightOriginalPositions.Clear();
+        pointLightOriginalRotations.Clear();
+        pointLightArrayMounted.Clear();
+
+        // Destroy camera parent if using motion center
+        if (cameraParent != null)
+        {
+            Destroy(cameraParent);
+            cameraParent = null;
+        }
+
+        // Reset current camera index
+        currentCameraIndex = 0;
     }
 
 
