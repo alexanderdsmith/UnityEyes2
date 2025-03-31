@@ -13,6 +13,11 @@ public class EyeballController : MonoBehaviour {
     public static Vector3[] iris_start_pos = new Vector3[iris_idxs.Length];
     private float irisSize = 1.0f;
 
+    private float pupilSizeMin = 0.2f;
+    private float pupilSizeMax = 0.8f;
+    private float irisSizeMin = 0.9f;
+    private float irisSizeMax = 1.0f;
+
     public bool isInteractive = false;
 
 	// Use this for initialization
@@ -50,10 +55,22 @@ public class EyeballController : MonoBehaviour {
 		);
     }
 
+    public void SetPupilSizeRange(Vector2 range)
+    {
+        pupilSizeMin = range.x;
+        pupilSizeMax = range.y;
+    }
+
+    public void SetIrisSizeRange(Vector2 range)
+    {
+        irisSizeMin = range.x;
+        irisSizeMax = range.y;
+    }
+
     public void RandomizeEyeball() {
 
         // Slightly decrease iris size on random
-        irisSize = Random.Range(0.9f, 1.0f);
+        irisSize = Random.Range(0.3f, 1.0f);
 
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
@@ -69,18 +86,30 @@ public class EyeballController : MonoBehaviour {
             vertices[iris_idxs[i]] = iris_middle + offset * irisSize;
         }
 
-        // finally update mesh
         mesh.vertices = vertices;
 
-        // also modify pupil size via material
-        eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
+        // TODO: Randomize pupil size based on clamped uniform distribution instead of gaussian noise
+        float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
+        eyeMaterial.SetFloat("_PupilSize", pupilSize);
 
-        // choose a random iris color
+
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);
         else eyeMaterial.SetTexture("_MainTex", colorTexs[Random.Range(0, colorTexs.Count)]);
     }
+
+    public Vector3 GetPupilCenter() {
+        Mesh mesh = GetComponent<MeshFilter>().mesh;
+        Vector3[] vertices = mesh.vertices;
+        
+        Vector3 iris_middle = Vector3.zero;
+        foreach (int idx in iris_idxs) {
+            iris_middle += vertices[idx];
+        }
+        iris_middle /= (float)iris_idxs.Length;
+        return transform.TransformPoint(iris_middle);
+    }
 	
-	public void SetEyeRotation(float pitch, float yaw){
+	public void SetEyeRotation(float yaw, float pitch){
 		transform.eulerAngles = new Vector3(yaw, pitch, 0);
 	}
 
@@ -103,19 +132,61 @@ public class EyeballController : MonoBehaviour {
     public JSONNode GetGazeVector() {
         JSONNode gazeNode = new JSONClass();
 
-        Mesh mesh = GetComponent<MeshFilter>().mesh;
-        Vector3[] vertices = mesh.vertices;
+        Vector3 irisCameraSpace = Camera.main.transform.InverseTransformPoint(GetPupilCenter());
 
-        // calculate position of 3D iris middle
-        Vector3 iris_middle = Vector3.zero;
-        foreach (int idx in iris_idxs)
-            iris_middle += vertices[idx] / (float)iris_idxs.Length;
-
-        Vector3 irisCameraSpace = Camera.main.transform.InverseTransformPoint(iris_middle);
+        Vector3 gazeVector = Camera.main.transform.worldToLocalMatrix * GetEyeLookVector();
 
         gazeNode.Add("iris_center", (irisCameraSpace).ToString("F4"));
         gazeNode.Add("gaze_vec", (Camera.main.transform.worldToLocalMatrix * GetEyeLookVector()).ToString("F4"));
 
         return gazeNode;
+    }
+
+    public JSONNode GetGazeVector(Camera cam) {
+        JSONNode gazeNode = new JSONClass();
+        
+        // Get the camera transform from the Camera object.
+        Transform camTrans = cam.transform;
+        
+        // 1. Compute the iris center in world space (configuration in centimeters)
+        Vector3 irisCenter_cm = GetPupilCenter();
+        // Convert iris center to the coordinate system relative to the given camera.
+        Vector3 relIrisCenter = camTrans.InverseTransformPoint(irisCenter_cm);
+        // Convert to meters.
+        relIrisCenter = relIrisCenter * 0.01f;
+        // Convert from Unity’s left-handed to right-handed (flip Y axis).
+        relIrisCenter.y = -relIrisCenter.y;
+        
+        // 2. Get the normalized gaze direction vector from the eye (in Unity’s coordinate system).
+        Vector3 gazeDir = GetEyeLookVector();
+        // Convert the gaze direction into the camera's local space.
+        Vector3 relGazeDir = camTrans.InverseTransformDirection(gazeDir);
+        
+        // 3. Compute a point offset from the iris center by 1 unit along the gaze direction.
+        Vector3 gazePoint = relIrisCenter + relGazeDir * 1.0f;
+        // (Optional conversion)
+        gazePoint = gazePoint * 0.01f;
+        gazePoint.y = -gazePoint.y;
+        
+        // 4. Also compute the world origin (0,0,0) in camera coordinates.
+        Vector3 eyeCenter = camTrans.InverseTransformPoint(Vector3.zero);
+        eyeCenter = eyeCenter * 0.01f;
+        eyeCenter.y = -eyeCenter.y;
+        
+        // 5. Add these points to the JSON node.
+        gazeNode.Add("iris_center", relIrisCenter.ToString("F6"));
+        gazeNode.Add("gaze_vector", gazePoint.ToString("F6"));
+        gazeNode.Add("eye_center", eyeCenter.ToString("F6"));
+        
+        return gazeNode;
+    }
+
+    public JSONNode GetCameratoEyeCenterPose() {
+        JSONNode cameraNode = new JSONClass();
+
+        cameraNode.Add("position", Camera.main.transform.position.ToString("F4"));
+        cameraNode.Add("rotation", Camera.main.transform.rotation.eulerAngles.ToString("F4"));
+
+        return cameraNode;
     }
 }

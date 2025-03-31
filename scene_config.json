@@ -1,0 +1,145 @@
+{ 
+  "outputPath": "~/data/", 
+  "outputFolder": "EER_eye_data", 
+  "num_samples": 100,
+  "motion_center": true, 
+  "camera_array_center": {
+    "x": 0,
+    "y": -0.03,
+    "z": 0.31,
+    "rx": 180,
+    "ry": 0,
+    "rz": 180
+  },
+  "camera_array_noise": { 
+    "x": 0,
+    "y": 0,
+    "z": 0,
+    "rx": 0,
+    "ry": 0,
+    "rz": 0
+  },
+  "cameras": [ 
+    { 
+      "name": "cam_1", 
+      "noise_distribution": "uniform", 
+      "is_orthographic": false,
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480,
+        "sensor_width": 36,
+        "sensor_height": 24
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 0, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": -0.022, 
+        "y": 0.008,
+        "z": 0.253,
+        "rx": 0, 
+        "ry": 0, 
+        "rz": 0
+      }
+    },
+    { 
+      "name": "cam_2", 
+      "noise_distribution": "uniform", 
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480,
+        "sensor_width": 36,
+        "sensor_height": 24
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 45, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": 0.022, 
+        "y": 0.008,
+        "z": 0.253,
+        "rx": 0,
+        "ry": 0, 
+        "rz": 0
+      }
+    },
+    { 
+      "name": "cam_3", 
+      "noise_distribution": "uniform", 
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480,
+        "sensor_width": 36,
+        "sensor_height": 24
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 45, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": -0.022, 
+        "y": 0.052,
+        "z": 0.253,
+        "rx": 0, 
+        "ry": 0, 
+        "rz": 0
+      }
+    },
+    { 
+      "name": "cam_4", 
+      "noise_distribution": "uniform", 
+      "intrinsics": { 
+        "fx": 584.89, 
+        "fy": 584.89, 
+        "cx": 320, 
+        "cy": 240, 
+        "w": 640, 
+        "h": 480,
+        "sensor_width": 36,
+        "sensor_height": 24
+      }, 
+      "intrinsics_noise": { 
+        "fx": 0, 
+        "fy": 0, 
+        "cx": 45, 
+        "cy": 0, 
+        "w": 0, 
+        "h": 0
+      }, 
+      "extrinsics": { 
+        "x": 0.022, 
+        "y": 0.052,
+        "z": 0.253,
+        "rx": 0,
+        "ry": 0, 
+        "rz": 0
+      }
+    }
+  ]
+}
