@@ -37,12 +37,7 @@ The scene can be configured by uploading a JSON file (camera_config.json) contai
         yaw_noise: noise, in degrees, about the default_yaw of the eye
         pitch_noise: noise, in degrees, about the default_pitch of the eye
 
-    
-
-
-
-
-Outputs of our imaging system:
+UnityEyes 2 Outputs:
 1) All of the existing data from UnityEyes
 2) Optical Axis in 3D
 3) Camera relative positioning
