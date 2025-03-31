@@ -20,7 +20,7 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 ## Settings
 **Eye definition:** the UnityEyes 2 simulated eye faces forward along the z-axis, with the y-axis facing down, and the x-axis facing to the right when looking from the perspective of the eye, defining a right-handed coordinate system.
 
-IMAGE HERE
+<img width="425" alt="image" src="https://github.com/user-attachments/assets/c129b7d3-302f-41b5-b7f0-249fccbef07d" />
 
 **Camera definition:** Users may define one or multiple cameras viewing the eye. Cameras are defined as pinhole, perspective cameras, which require intrinsics to define the properties of the camera field of view, focal length, and output image dimensions. Our cameras follow the right-hand rule, with the z-axis facing forward, the y-axis down, and the x-axis to the right, when looking at the perspective of the camera. Pixels in generated images have their origin at the top left corner, with *u* corresponding to the x-axis, and *v* corresponding to the y-axis.
 
@@ -30,7 +30,7 @@ Six parameters define the camera extrinsics: three comprising translation in met
 
 **Camera array motion center:** We enable the user to define a camera array motion center: a 6 degrees-of-freedom transform relative to the eye as a point from which noise and extrinsic calibration of the camera(s) is defined. All cameras' extrinsics will be defined as child transforms of this motion center. If no motion center is provided by the user, it will default to the extrinsics of the first camera. A user may specify noise parameters which will be applied to the motion center, moving all cameras as a fixed array.
 
-IMAGE HERE
+<img width="687" alt="image" src="https://github.com/user-attachments/assets/5c89d43f-163c-4b00-a266-451eba98d9f3" />
 
 **Start generation:** Once a user selects "Start Generation", the program will run for the specified number of samples, and files will be saved to the specified output.
 
