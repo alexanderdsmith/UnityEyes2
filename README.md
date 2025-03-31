@@ -12,7 +12,7 @@ Updated by Alexander Smith and Brijesh Muthumanickam
     c: randomize camera and eye parameters
     r: randomize scene parameters
     l: randomize lighting parameters
-    h: hide button overlays
+    h: hide UI button overlays
     p: toggle preview mode
     →: increment camera index
     ←: decrement camera index
