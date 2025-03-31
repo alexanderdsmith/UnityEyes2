@@ -354,8 +354,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Scene\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 320.5
-    y: 108
+    x: 1
+    y: 24
     width: 840
     height: 81.5
   m_SerializedDataModeController:
@@ -906,7 +906,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.017968448, y: 0.9820018, z: -0.12769385, w: 0.13818651}
     speed: 2
-    m_Value: {x: 0.017967986, y: 0.9819765, z: -0.12769055, w: 0.13818295}
+    m_Value: {x: 0.017968448, y: 0.9820018, z: -0.12769385, w: 0.13818651}
   m_Size:
     m_Target: 3.5733566
     speed: 2
@@ -967,7 +967,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 108
+    y: 24
     width: 319.5
     height: 492.5
   m_SerializedDataModeController:
@@ -1087,8 +1087,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Game\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 320.5
-    y: 215.5
+    x: 1
+    y: 131.5
     width: 840
     height: 385
   m_SerializedDataModeController:
@@ -1162,7 +1162,7 @@ MonoBehaviour:
       height: 364
     m_MinimalGUI: 1
   m_defaultScale: 1
-  m_LastWindowPixelSize: {x: 1680, y: 770}
+  m_LastWindowPixelSize: {x: 840, y: 385}
   m_ClearInEditMode: 1
   m_NoCameraWarning: 1
   m_LowResolutionForAspectRatios: 01000000000000000000
@@ -1236,7 +1236,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: ea600000
     m_LastClickedID: 24810
-    m_ExpandedIDs: 00000000ea60000000ca9a3bffffff7f
+    m_ExpandedIDs: 0000000028560000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1265,7 +1265,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 
+    m_ExpandedIDs: 0000000028560000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1346,7 +1346,7 @@ MonoBehaviour:
   m_Pos:
     serializedVersion: 2
     x: 0
-    y: 626.5
+    y: 542.5
     width: 1161.5
     height: 236.5
   m_SerializedDataModeController:
@@ -1382,8 +1382,8 @@ MonoBehaviour:
     m_TextWithWhitespace: "Inspector\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 1162.5
-    y: 108
+    x: 1163.5
+    y: 24
     width: 348.5
     height: 755
   m_SerializedDataModeController:
