@@ -124,6 +124,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
     void Start()
     {
+        EnsureDirectoryExists("imgs");
         eyeRegion = eyeRegionObj.GetComponent<EyeRegionController>();
         eyeball = eyeballObj.GetComponent<EyeballController>();
         eyeRegionSubdiv = eyeRegionSubdivObj.GetComponent<SubdivMesh>();
@@ -750,12 +751,9 @@ public class SynthesEyesServer : MonoBehaviour{
             SwitchCamera(-1);
         }
 
-
         if (isSavingData || Input.GetKey("c"))
         {
             RandomizeScene();
-            ToggleOutputPreview();
-            ToggleOutputPreview();
         }
 
         if (Input.GetKeyDown("p"))
@@ -842,8 +840,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
         framesSaved++;
 
-        EnsureDirectoryExists("imgs");
-
         if (!headlessMode)
         {
             yield return new WaitForEndOfFrame();
@@ -855,6 +851,8 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             Camera cam = cameraList[i];
             string cameraName = cam.gameObject.name;
+
+            Debug.Log(cameraName + " frame: " + framesSaved);
 
             if (!headlessMode)
             {
@@ -974,8 +972,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private void saveAllCamerasDetails(int frame)
     {
-        EnsureDirectoryExists("imgs");
-
         JSONNode rootNode = new JSONClass();
 
         rootNode.Add("eye_details", eyeball.GetEyeballDetails());
