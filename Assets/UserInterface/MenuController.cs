@@ -277,10 +277,8 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Add listeners for all UI elements
         SetupUIListeners();
 
-        // Add the first camera
         if (addedCameras.Count == 0)
         {
             AddCamera();
@@ -384,11 +382,10 @@ public class MenuController : MonoBehaviour
         if (string.IsNullOrEmpty(value) || !int.TryParse(value, out int parsedValue))
         {
             Debug.LogWarning($"Could not parse '{value}' as integer for sample count, using default");
-            // Don't change the value if parsing fails
+
             return;
         }
 
-        // Ensure value is positive
         if (parsedValue <= 0)
         {
             Debug.LogWarning($"Sample count must be positive, using 1 instead of {parsedValue}");
@@ -407,7 +404,6 @@ public class MenuController : MonoBehaviour
         settingsMenu.SetActive(isMenuOpen);
         if (isMenuOpen)
         {
-            // Restore saved values when opening menu
             RestoreInputValues();
         }
     }
@@ -423,7 +419,6 @@ public class MenuController : MonoBehaviour
         motionCenterValues["CameraArrayCenter"] = new Dictionary<string, float>();
         motionCenterValues["CameraArrayCenterNoise"] = new Dictionary<string, float>();
 
-        // Initialize CameraArrayCenter values (x, y, z, rx, ry, rz to 0)
         motionCenterValues["CameraArrayCenter"]["x"] = 0f;
         motionCenterValues["CameraArrayCenter"]["y"] = 0f;
         motionCenterValues["CameraArrayCenter"]["z"] = 0f;
@@ -431,7 +426,6 @@ public class MenuController : MonoBehaviour
         motionCenterValues["CameraArrayCenter"]["ry"] = 0f;
         motionCenterValues["CameraArrayCenter"]["rz"] = 0f;
 
-        // Initialize CameraArrayCenterNoise values (x, y, z, rx, ry, rz to 0)
         motionCenterValues["CameraArrayCenterNoise"]["x"] = 0f;
         motionCenterValues["CameraArrayCenterNoise"]["y"] = 0f;
         motionCenterValues["CameraArrayCenterNoise"]["z"] = 0f;
@@ -445,7 +439,6 @@ public class MenuController : MonoBehaviour
         motionCenterInputFields["CameraArrayCenter"] = new InputFieldRefs();
         motionCenterInputFields["CameraArrayCenterNoise"] = new InputFieldRefs();
 
-        // Find and initialize Camera Array Center input fields
         if (cameraArrayCenterGroup != null)
         {
             TMP_InputField[] centerInputFields = cameraArrayCenterGroup.GetComponentsInChildren<TMP_InputField>(true);
@@ -458,7 +451,6 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Find and initialize Camera Array Center Noise input fields
         if (cameraArrayCenterNoiseGroup != null)
         {
             TMP_InputField[] noiseInputFields = cameraArrayCenterNoiseGroup.GetComponentsInChildren<TMP_InputField>(true);
@@ -528,7 +520,6 @@ public class MenuController : MonoBehaviour
 
     private void SetMotionCenterFieldsInteractable(bool interactable)
     {
-        // Enable/disable Camera Array Center input fields
         if (motionCenterInputFields.ContainsKey("CameraArrayCenter"))
         {
             var centerRefs = motionCenterInputFields["CameraArrayCenter"];
@@ -540,7 +531,6 @@ public class MenuController : MonoBehaviour
             SetInputFieldInteractable(centerRefs.rz, interactable);
         }
 
-        // Enable/disable Camera Array Center Noise input fields
         if (motionCenterInputFields.ContainsKey("CameraArrayCenterNoise"))
         {
             var noiseRefs = motionCenterInputFields["CameraArrayCenterNoise"];
@@ -807,16 +797,12 @@ public class MenuController : MonoBehaviour
 
         if (rectTransform != null)
         {
-            // Get the current anchored position
             Vector2 anchoredPosition = rectTransform.anchoredPosition;
 
-            // Change only the X coordinate to 300
             anchoredPosition.x = 300f;
 
-            // Apply the modified position back to the RectTransform
             rectTransform.anchoredPosition = anchoredPosition;
 
-            // Log for debugging
             Debug.Log($"Set {newLightGroup.name} X position to 300");
         }
         else
@@ -1112,7 +1098,6 @@ public class MenuController : MonoBehaviour
         {
             int cameraId = cameraEntry.Key;
 
-            // Skip if we don't have input field references for this camera
             if (!cameraInputFields.ContainsKey(cameraId))
                 continue;
 
@@ -1120,7 +1105,6 @@ public class MenuController : MonoBehaviour
             {
                 string groupName = groupEntry.Key;
 
-                // Skip if we don't have input field references for this group
                 if (!cameraInputFields[cameraId].ContainsKey(groupName))
                     continue;
 
@@ -1172,12 +1156,10 @@ public class MenuController : MonoBehaviour
             }
         }
 
-        // Add light value restoration
         foreach (var lightEntry in lightGroupValues)
         {
             int lightId = lightEntry.Key;
 
-            // Skip if we don't have input field references for this light
             if (!lightInputFields.ContainsKey(lightId))
                 continue;
 
@@ -1185,14 +1167,12 @@ public class MenuController : MonoBehaviour
             {
                 string groupName = groupEntry.Key;
 
-                // Skip if we don't have input field references for this group
                 if (!lightInputFields[lightId].ContainsKey(groupName))
                     continue;
 
                 var inputRefs = lightInputFields[lightId][groupName];
                 var values = groupEntry.Value;
 
-                // For extrinsics and extrinsicsNoise
                 if (groupName.Contains("PositionGroupLight"))
                 {
                     if (inputRefs.x != null && values.ContainsKey("x"))
@@ -1220,7 +1200,6 @@ public class MenuController : MonoBehaviour
         {
             int lightId = lightEntry.Key;
 
-            // Skip if no property fields
             if (!lightPropertyFields.ContainsKey(lightId))
                 continue;
 
@@ -1247,14 +1226,12 @@ public class MenuController : MonoBehaviour
         {
             string groupName = groupEntry.Key;
 
-            // Skip if we don't have input field references for this group
             if (!motionCenterInputFields.ContainsKey(groupName))
                 continue;
 
             var inputRefs = motionCenterInputFields[groupName];
             var values = groupEntry.Value;
 
-            // Restore values for both CameraArrayCenter and CameraArrayCenterNoise
             if (inputRefs.x != null && values.ContainsKey("x"))
                 inputRefs.x.text = values["x"].ToString();
 
@@ -1291,7 +1268,6 @@ public class MenuController : MonoBehaviour
 
         rootNode.Add("motion_center", new JSONData(motionCenterToggle != null && motionCenterToggle.isOn ? 1 : 0));
 
-        // Add Camera Array Center
         JSONNode centerNode = new JSONClass();
         if (motionCenterValues.ContainsKey("CameraArrayCenter"))
         {
@@ -1305,7 +1281,6 @@ public class MenuController : MonoBehaviour
         }
         rootNode.Add("camera_array_center", centerNode);
 
-        // Add Camera Array Center Noise
         JSONNode centerNoiseNode = new JSONClass();
         if (motionCenterValues.ContainsKey("CameraArrayCenterNoise"))
         {
@@ -1323,7 +1298,6 @@ public class MenuController : MonoBehaviour
         JSONArray camerasArray = new JSONArray();
         rootNode.Add("cameras", camerasArray);
 
-        // Add configuration for each camera
         for (int i = 1; i <= cameraCount; i++)
         {
             if (!cameraGroupValues.ContainsKey(i))
@@ -1335,7 +1309,6 @@ public class MenuController : MonoBehaviour
 
             var cameraValues = cameraGroupValues[i];
 
-            // Add intrinsics
             JSONNode intrinsicsNode = new JSONClass();
             if (cameraValues.ContainsKey("Intrinsics"))
             {
@@ -1351,7 +1324,6 @@ public class MenuController : MonoBehaviour
             }
             cameraNode.Add("intrinsics", intrinsicsNode);
 
-            // Add intrinsics noise
             JSONNode intrinsicsNoiseNode = new JSONClass();
             if (cameraValues.ContainsKey("IntrinsicsNoise"))
             {
@@ -1365,7 +1337,6 @@ public class MenuController : MonoBehaviour
             }
             cameraNode.Add("intrinsics_noise", intrinsicsNoiseNode);
 
-            // Add extrinsics
             JSONNode extrinsicsNode = new JSONClass();
             if (cameraValues.ContainsKey("Extrinsics"))
             {
@@ -1379,7 +1350,6 @@ public class MenuController : MonoBehaviour
             }
             cameraNode.Add("extrinsics", extrinsicsNode);
 
-            // Add extrinsics noise
             JSONNode extrinsicsNoiseNode = new JSONClass();
             if (cameraValues.ContainsKey("ExtrinsicsNoise"))
             {
@@ -1400,7 +1370,6 @@ public class MenuController : MonoBehaviour
         JSONArray lightsArray = new JSONArray();
         rootNode.Add("lights", lightsArray);
 
-        // Add configuration for each light
         for (int i = 1; i <= lightCount; i++)
         {
             if (!lightGroupValues.ContainsKey(i))
@@ -1413,7 +1382,6 @@ public class MenuController : MonoBehaviour
 
             var lightValues = lightGroupValues[i];
 
-            // Add extrinsics
             JSONNode extrinsicsNode = new JSONClass();
             if (lightValues.ContainsKey("PositionGroupLight"))
             {
@@ -1427,7 +1395,6 @@ public class MenuController : MonoBehaviour
             }
             lightNode.Add("position", extrinsicsNode);
 
-            // Add extrinsics noise
             JSONNode extrinsicsNoiseNode = new JSONClass();
             if (lightValues.ContainsKey("PositionNoiseGroup"))
             {
@@ -1491,26 +1458,23 @@ public class MenuController : MonoBehaviour
         pupilSizeRangeNode.Add("max", new JSONData(0.2f));
         eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
 
-        // Add iris size range
         JSONNode irisSizeRangeNode = new JSONClass();
         irisSizeRangeNode.Add("min", new JSONData(10.0f));
         irisSizeRangeNode.Add("max", new JSONData(10.0f));
         eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
 
-        // Add default orientation and noise
         eyeParametersNode.Add("default_yaw", new JSONData(0f));
         eyeParametersNode.Add("default_pitch", new JSONData(0f));
         eyeParametersNode.Add("yaw_noise", new JSONData(20f));
         eyeParametersNode.Add("pitch_noise", new JSONData(15f));
 
-        // Add the eye parameters node to the root
         rootNode.Add("eye_parameters", eyeParametersNode);
 
         // Save to file
         try
         {
             string path = Path.Combine(Application.dataPath, "..", "camera_config.json");
-            File.WriteAllText(path, rootNode.ToJSON(4)); // Using indent of 4 for pretty printing
+            File.WriteAllText(path, rootNode.ToJSON(4)); 
             Debug.Log($"Configuration saved successfully to: {path}");
 
             // Notify SynthesEyesServer to reload configuration

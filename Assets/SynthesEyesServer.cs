@@ -72,8 +72,8 @@ public class SynthesEyesServer : MonoBehaviour{
     public float cameraYawNoise = Mathf.Deg2Rad * 40;
     public float defaultEyePitch = 0;
     public float defaultEyeYaw = 0;
-    public float eyePitchNoise = 10;
-    public float eyeYawNoise = 10;
+    public float eyePitchNoise = 30;
+    public float eyeYawNoise = 30;
 
     private float randomizeSceneStartTime = 0f;
     private int randomizeSceneCallCount = 0;
@@ -109,18 +109,14 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private EyeParameters eyeParameters;
 
-    // Headless Mode
     private bool headlessMode = false;
 
-    // Data saving control
     public bool isSavingData = false;
 
 	private Mesh eyemesh;
 
-    // frame index for saving
     int framesSaved = 0;
 
-    // Store the camera's original transform from XML
     private Vector3 xmlBasePosition;
     private Vector3 xmlBaseEulerAngles;
 
@@ -128,7 +124,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     void Start()
     {
-        // Initialise SynthesEyes Objects
         eyeRegion = eyeRegionObj.GetComponent<EyeRegionController>();
         eyeball = eyeballObj.GetComponent<EyeballController>();
         eyeRegionSubdiv = eyeRegionSubdivObj.GetComponent<SubdivMesh>();
@@ -138,7 +133,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
         lightingController = GameObject.Find("lighting_controller").GetComponent<LightingController>();
 
-        // Find or create visualization manager
         visualizationManager = FindFirstObjectByType<EyeVisualizationManager>();
         if (visualizationManager == null)
         {
@@ -206,14 +200,13 @@ public class SynthesEyesServer : MonoBehaviour{
                     centerNode["rz"] != null ? centerNode["rz"].AsFloat : 0f
                 );
 
-                // Convert position from right-handed meters to left-handed centimeters
+                // Convert from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
                 cameraArrayCenter = new Vector3(
                     arrayPosition.x * 100f,           // Scale to cm
                     -arrayPosition.y * 100f,          // Invert Y and scale to cm
                     arrayPosition.z * 100f            // Scale to cm
                 );
 
-                // Convert rotation from right-handed to left-handed coordinate system
                 cameraArrayRotation = new Vector3(
                     -arrayRotation.x,                 // Invert X rotation
                     arrayRotation.y,                  // Keep Y rotation
@@ -223,9 +216,9 @@ public class SynthesEyesServer : MonoBehaviour{
                 Debug.Log("Camera array rotation: " + cameraArrayRotation);
             }
 
-            if (rootNode["camera_array_noise"] != null)
+            if (rootNode["camera_array_center_noise"] != null)
             {
-                JSONNode noiseNode = rootNode["camera_array_noise"];
+                JSONNode noiseNode = rootNode["camera_array_center_noise"];
 
                 // Parse position noise values from JSON (in right-handed meters)
                 Vector3 positionNoise = new Vector3(
@@ -240,6 +233,7 @@ public class SynthesEyesServer : MonoBehaviour{
                     noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
                 );
 
+                // Convert from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
                 cameraArrayPositionNoise = new Vector3(
                     positionNoise.x * 100f,           // Scale to cm
                     -positionNoise.y * 100f,          // Invert Y and scale to cm
@@ -284,13 +278,8 @@ public class SynthesEyesServer : MonoBehaviour{
 
                 eyeParameters.defaultYaw = eyeParamsNode["default_yaw"] != null ? eyeParamsNode["default_yaw"].AsFloat : 0f;
                 eyeParameters.defaultPitch = eyeParamsNode["default_pitch"] != null ? eyeParamsNode["default_pitch"].AsFloat : 0f;
-                eyeParameters.yawNoise = eyeParamsNode["yaw_noise"] != null ? eyeParamsNode["yaw_noise"].AsFloat : 10f;
-                eyeParameters.pitchNoise = eyeParamsNode["pitch_noise"] != null ? eyeParamsNode["pitch_noise"].AsFloat : 10f;
-
-                defaultEyeYaw = eyeParameters.defaultYaw;
-                defaultEyePitch = eyeParameters.defaultPitch;
-                eyeYawNoise = eyeParameters.yawNoise;
-                eyePitchNoise = eyeParameters.pitchNoise;
+                eyeParameters.yawNoise = eyeParamsNode["yaw_noise"] != null ? eyeParamsNode["yaw_noise"].AsFloat : 30f;
+                eyeParameters.pitchNoise = eyeParamsNode["pitch_noise"] != null ? eyeParamsNode["pitch_noise"].AsFloat : 30f;
 
             }
 
@@ -330,6 +319,7 @@ public class SynthesEyesServer : MonoBehaviour{
                         extrinsics["ry"] != null ? extrinsics["ry"].AsFloat : 0f,
                         extrinsics["rz"] != null ? extrinsics["rz"].AsFloat : 0f
                     );
+                    // Convert from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
                     position = new Vector3(
                         extrinsicPosition.x * 100f,          // Scale to cm
                         -extrinsicPosition.y * 100f,         // Invert Y and scale to cm
@@ -480,7 +470,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
             }
 
-            // If not using motion center, flip cameras to face the right direction
             if (!useMotionCenter)
             {
                 foreach (Camera cam in cameraList)
@@ -553,7 +542,7 @@ public class SynthesEyesServer : MonoBehaviour{
                     extrinsics["rz"] != null ? extrinsics["rz"].AsFloat : 0f
                 );
 
-                // Convert from right-handed meters to left-handed centimeters (same as cameras)
+                // Convert from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
                 position = new Vector3(
                     extrinsicPosition.x * 100f,          // Scale to cm
                     -extrinsicPosition.y * 100f,         // Invert Y and scale to cm
@@ -664,25 +653,26 @@ public class SynthesEyesServer : MonoBehaviour{
 
     void RandomizeScene()
     {
-        // Record the start time on the first call
         if (randomizeSceneCallCount == 0)
         {
             randomizeSceneStartTime = Time.time;
         }
         randomizeSceneCallCount++;
 
-        eyeball.SetEyeRotation(Random.Range(-eyeParameters.yawNoise, eyeParameters.yawNoise) + eyeParameters.defaultYaw,
-                               Random.Range(-eyeParameters.pitchNoise, eyeParameters.pitchNoise) + eyeParameters.defaultPitch);
+        float randomYaw = Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw;
+        float randomPitch = Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch;
+
+        eyeball.SetEyeRotation(randomYaw, randomPitch);
 
         if (useMotionCenter)
         {
-
             float offsetX = GetRandomOffset(cameraArrayPositionNoise.x);
             float offsetY = GetRandomOffset(cameraArrayPositionNoise.y);
             float offsetZ = GetRandomOffset(cameraArrayPositionNoise.z);
             float offsetPitch = GetRandomOffset(cameraArrayRotationNoise.x);
             float offsetYaw = GetRandomOffset(cameraArrayRotationNoise.y);
             float offsetRoll = GetRandomOffset(cameraArrayRotationNoise.z);
+
 
             cameraParent.transform.position = cameraArrayCenter + new Vector3(offsetX, offsetY, offsetZ);
             cameraParent.transform.eulerAngles = cameraArrayRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
@@ -709,7 +699,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
             for (int i = 0; i < pointLightList.Count; i++)
             {
-                // Skip array-mounted lights
                 if (pointLightArrayMounted[i]) continue;
 
                 Light light = pointLightList[i];
@@ -717,7 +706,6 @@ public class SynthesEyesServer : MonoBehaviour{
                 Vector3 lightOriginalRotation = pointLightOriginalRotations[i];
 
                 JSONNode lightsArray = JSON.Parse(File.ReadAllText(jsonConfigPath))["lights"].AsArray;
-                // Skip if index exceeds available config entries
                 if (i >= lightsArray.Count) continue;
 
                 JSONNode lightNode = lightsArray[i];
@@ -805,11 +793,6 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             Debug.Log("Escape key pressed - quitting application");
             Application.Quit();
-
-            // In Unity Editor, this will not quit the play mode, so add this for testing
-#if UNITY_EDITOR
-    UnityEditor.EditorApplication.isPlaying = false;
-#endif
         }
     }
 
@@ -921,18 +904,13 @@ public class SynthesEyesServer : MonoBehaviour{
 
     public void ReloadConfiguration(string configPath = null)
     {
-        // Use provided path or default
         string path = configPath != null ? configPath : jsonConfigPath;
-
         Debug.Log($"Reloading configuration from: {path}");
 
-        // Clean up current cameras and lights
         CleanupCurrentScene();
 
-        // Reset frame counter
         ResetFrameCounter();
 
-        // Load new configuration
         if (File.Exists(path))
         {
             LoadCamerasFromConfig(path);
@@ -943,10 +921,8 @@ public class SynthesEyesServer : MonoBehaviour{
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
             }
 
-            // Randomize the scene to apply new settings
             RandomizeScene();
 
-            // Toggle preview to refresh the view
             ToggleOutputPreview();
             ToggleOutputPreview();
 
@@ -960,7 +936,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private void CleanupCurrentScene()
     {
-        // Destroy current cameras
         foreach (Camera cam in cameraList)
         {
             if (cam != null)
@@ -975,7 +950,6 @@ public class SynthesEyesServer : MonoBehaviour{
         cameraExtrinsicsRotationNoise.Clear();
         cameraOriginalIntrinsics.Clear();
 
-        // Destroy current lights
         foreach (Light light in pointLightList)
         {
             if (light != null)
@@ -988,14 +962,12 @@ public class SynthesEyesServer : MonoBehaviour{
         pointLightOriginalRotations.Clear();
         pointLightArrayMounted.Clear();
 
-        // Destroy camera parent if using motion center
         if (cameraParent != null)
         {
             Destroy(cameraParent);
             cameraParent = null;
         }
 
-        // Reset current camera index
         currentCameraIndex = 0;
     }
 
