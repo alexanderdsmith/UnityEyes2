@@ -16,6 +16,7 @@ Updated by Alexander Smith and Brijesh Muthumanickam
     p: toggle preview mode
     →: increment camera index
     ←: decrement camera index
+    Esc: close the UE2 application
 
 ## Settings
 **Eye definition:** the UnityEyes 2 simulated eye faces forward along the z-axis, with the y-axis facing down, and the x-axis facing to the right when looking from the perspective of the eye, defining a right-handed coordinate system.
