@@ -7,7 +7,6 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 The scene can be configured by uploading a JSON file (camera_config.json) containing the following parameters:
 
     outputPath: path to the folder where data will be saved (must already exist)
-
     num_samples: number of eye images to capture over the noise parameters for all cameras
 
     headless_mode: show (0) or hide (1) the User Interface after selecting "Start Generation"
