@@ -233,7 +233,7 @@ public class SynthesEyesServer : MonoBehaviour{
                     noiseNode["rz"] != null ? noiseNode["rz"].AsFloat : 0f
                 );
 
-                // Convert from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
+                // Convert noise values from right-handed meters to left-handed centimeters to accommodate Unity's coordinate convention
                 cameraArrayPositionNoise = new Vector3(
                     positionNoise.x * 100f,           // Scale to cm
                     -positionNoise.y * 100f,          // Invert Y and scale to cm
@@ -978,9 +978,9 @@ public class SynthesEyesServer : MonoBehaviour{
 
         JSONNode rootNode = new JSONClass();
 
-        // rootNode.Add("eye_details", eyeball.GetEyeballDetails());
-        // rootNode.Add("lighting_details", lightingController.GetLightingDetails());
-        // rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
+        rootNode.Add("eye_details", eyeball.GetEyeballDetails());
+        rootNode.Add("lighting_details", lightingController.GetLightingDetails());
+        rootNode.Add("eye_region_details", eyeRegion.GetEyeRegionDetails());
 
         JSONNode camerasNode = new JSONClass();
         rootNode.Add("cameras", camerasNode);
@@ -995,24 +995,24 @@ public class SynthesEyesServer : MonoBehaviour{
             JSONNode cameraNode = new JSONClass();
             camerasNode.Add(cameraName, cameraNode);
 
-            // cameraNode.Add("head_pose", cam.transform.rotation.eulerAngles.ToString("F4"));
-            // cameraNode.Add("camera_pose", eyeball.GetCameratoEyeCenterPose());
+            cameraNode.Add("head_pose", cam.transform.rotation.eulerAngles.ToString("F4"));
+            cameraNode.Add("camera_pose", eyeball.GetCameratoEyeCenterPose());
 
-            // JSONArray listInteriorMargin2D = new JSONArray();
-            // cameraNode.Add("interior_margin_2d", listInteriorMargin2D);
-            // foreach (var idx in EyeRegionTopology.interior_margin_idxs)
-            // {
-            //     Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-            //     listInteriorMargin2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
-            // }
+            JSONArray listInteriorMargin2D = new JSONArray();
+            cameraNode.Add("interior_margin_2d", listInteriorMargin2D);
+            foreach (var idx in EyeRegionTopology.interior_margin_idxs)
+            {
+                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+                listInteriorMargin2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            }
 
-            // JSONArray listCaruncle2D = new JSONArray();
-            // cameraNode.Add("caruncle_2d", listCaruncle2D);
-            // foreach (var idx in EyeRegionTopology.caruncle_idxs)
-            // {
-            //     Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
-            //     listCaruncle2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
-            // }
+            JSONArray listCaruncle2D = new JSONArray();
+            cameraNode.Add("caruncle_2d", listCaruncle2D);
+            foreach (var idx in EyeRegionTopology.caruncle_idxs)
+            {
+                Vector3 v_3d = eyeRegion.transform.localToWorldMatrix * meshEyeRegion.vertices[idx];
+                listCaruncle2D.Add(new JSONData(cam.WorldToScreenPoint(v_3d).ToString("F4")));
+            }
 
             JSONArray listIris2D = new JSONArray();
             cameraNode.Add("iris_2d", listIris2D);
