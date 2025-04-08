@@ -16,8 +16,6 @@ public class CameraIntrinsics{
     public float cy;
     public int width;
     public int height;
-    public float sensor_width;
-    public float sensor_height;
 }
 
 [System.Serializable]
@@ -380,12 +378,6 @@ public class SynthesEyesServer : MonoBehaviour{
                     if (intrinsics["cy"] != null) camIntrinsics.cy = intrinsics["cy"].AsFloat;
                     if (intrinsics["w"] != null) camIntrinsics.width = intrinsics["w"].AsInt;
                     if (intrinsics["h"] != null) camIntrinsics.height = intrinsics["h"].AsInt;
-
-                    if (intrinsics["sensor_width"] != null) camIntrinsics.sensor_width = intrinsics["sensor_width"].AsFloat;
-                    else camIntrinsics.sensor_width = 1.6f;
-
-                    if (intrinsics["sensor_height"] != null) camIntrinsics.sensor_height = intrinsics["sensor_height"].AsFloat;
-                    else camIntrinsics.sensor_height = 1.2f;
                 }
 
                 CameraConfig config = new CameraConfig
@@ -405,8 +397,6 @@ public class SynthesEyesServer : MonoBehaviour{
                     cy = camIntrinsics.cy,
                     width = camIntrinsics.width,
                     height = camIntrinsics.height,
-                    sensor_width = camIntrinsics.sensor_width,
-                    sensor_height = camIntrinsics.sensor_height
                 });
 
                 ConfigureCameraFromIntrinsics(newCam, config);

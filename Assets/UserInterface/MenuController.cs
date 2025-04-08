@@ -175,6 +175,7 @@ public class MenuController : MonoBehaviour
     private int sampleCount = 10000;
 
     private List<GameObject> addedCameras = new List<GameObject>();
+    private Dictionary<int, bool> lightArrayMountedStates = new Dictionary<int, bool>();
 
     private void Start()
     {
@@ -935,7 +936,8 @@ public class MenuController : MonoBehaviour
             arrayMountedToggle.onValueChanged.AddListener((value) => {
                 OnArrayMountedChanged(lightId, value);
             });
-            arrayMountedToggle.isOn = true; 
+            arrayMountedToggle.isOn = true;
+            lightArrayMountedStates[lightId] = true;
         }
 
         lightPropertyFields[lightId] = new LightPropertyRefs();
@@ -1016,6 +1018,7 @@ public class MenuController : MonoBehaviour
 
     private void OnArrayMountedChanged(int lightId, bool isOn)
     {
+        lightArrayMountedStates[lightId] = isOn;
         Debug.Log($"Light {lightId} array mounted set to {isOn}");
     }
 
@@ -1319,8 +1322,6 @@ public class MenuController : MonoBehaviour
                 intrinsicsNode.Add("cy", new JSONData(intrinsics.ContainsKey("cy") ? intrinsics["cy"] : 0f));
                 intrinsicsNode.Add("w", new JSONData(intrinsics.ContainsKey("width") ? intrinsics["width"] : 0f));
                 intrinsicsNode.Add("h", new JSONData(intrinsics.ContainsKey("height") ? intrinsics["height"] : 0f));
-                intrinsicsNode.Add("sensor_width", new JSONData(1.6f));
-                intrinsicsNode.Add("sensor_height", new JSONData(1.2f));
             }
             cameraNode.Add("intrinsics", intrinsicsNode);
 
@@ -1378,7 +1379,8 @@ public class MenuController : MonoBehaviour
             JSONNode lightNode = new JSONClass();
             lightNode.Add("name", new JSONData($"point_light_{i}"));
             lightNode.Add("type", new JSONData("point"));
-            lightNode.Add("array_mounted", new JSONData(1)); // Default value
+            bool isArrayMounted = lightArrayMountedStates.ContainsKey(i) ? lightArrayMountedStates[i] : true;
+            lightNode.Add("array_mounted", new JSONData(isArrayMounted ? 1 : 0));
 
             var lightValues = lightGroupValues[i];
 
