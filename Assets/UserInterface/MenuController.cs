@@ -37,15 +37,15 @@ public class MenuController : MonoBehaviour
     // Motion Center
     // ---------------------------------------------------------
     [Header("Motion Center")]
-    [SerializeField] private Toggle motionCenterToggle;
+    [SerializeField] public Toggle motionCenterToggle;
     [SerializeField] private GameObject motionCenterGroup;
     [SerializeField] private RectTransform cameraArrayCenterGroup;
     [SerializeField] private RectTransform cameraArrayCenterNoiseGroup;
 
     // Dictionaries to store values and input field references
-    private Dictionary<string, Dictionary<string, float>> motionCenterValues =
+    public Dictionary<string, Dictionary<string, float>> motionCenterValues =
         new Dictionary<string, Dictionary<string, float>>();
-    private Dictionary<string, InputFieldRefs> motionCenterInputFields =
+    public Dictionary<string, InputFieldRefs> motionCenterInputFields =
         new Dictionary<string, InputFieldRefs>();
 
     // ---------------------------------------------------------
@@ -54,6 +54,13 @@ public class MenuController : MonoBehaviour
     [Header("Camera Management")]
     [SerializeField] private Button addCameraButton;
     [SerializeField] private Button removeCameraButton;
+
+    // ---------------------------------------------------------
+    // Help Popup
+    // ---------------------------------------------------------
+    [Header("Help")]
+    [SerializeField] private Button helpButton;
+    [SerializeField] private GameObject helpPopup;
 
     private int cameraCount = 0;
 
@@ -67,23 +74,23 @@ public class MenuController : MonoBehaviour
     [SerializeField] private Transform extrinsicsGroup;
     [SerializeField] private Transform extrinsicsNoiseGroup;
 
-    private Dictionary<int, Dictionary<string, Dictionary<string, float>>> cameraGroupValues =
+    public Dictionary<int, Dictionary<string, Dictionary<string, float>>> cameraGroupValues =
         new Dictionary<int, Dictionary<string, Dictionary<string, float>>>();
 
-    private class InputFieldRefs
+    public class InputFieldRefs
     {
         public TMP_InputField fx, fy, cx, cy, width, height;
         public TMP_InputField x, y, z, rx, ry, rz;
     }
 
-    private Dictionary<int, Dictionary<string, InputFieldRefs>> cameraInputFields =
+    public Dictionary<int, Dictionary<string, InputFieldRefs>> cameraInputFields =
         new Dictionary<int, Dictionary<string, InputFieldRefs>>();
 
     [Header("Save Configuration")]
     [SerializeField] private Button saveButton;
-    [SerializeField] private InputField outputPathField;
-    [SerializeField] private InputField outputFolderField;
-    [SerializeField] private TMP_InputField numSamplesField;
+    [SerializeField] public InputField outputPathField;
+    [SerializeField] public InputField outputFolderField;
+    [SerializeField] public TMP_InputField numSamplesField;
 
     // ---------------------------------------------------------
     // Multi-Camera Support
@@ -106,23 +113,23 @@ public class MenuController : MonoBehaviour
     [SerializeField] private RectTransform lightContainer;
     [SerializeField] private GameObject lightGroupPrefab;
 
-    private List<GameObject> addedLights = new List<GameObject>();
+    public List<GameObject> addedLights = new List<GameObject>();
 
-    private Dictionary<int, Dictionary<string, Dictionary<string, float>>> lightGroupValues =
+    public Dictionary<int, Dictionary<string, Dictionary<string, float>>> lightGroupValues =
         new Dictionary<int, Dictionary<string, Dictionary<string, float>>>();
 
-    private Dictionary<int, Dictionary<string, InputFieldRefs>> lightInputFields =
+    public Dictionary<int, Dictionary<string, InputFieldRefs>> lightInputFields =
         new Dictionary<int, Dictionary<string, InputFieldRefs>>();
 
-    private Dictionary<int, Toggle> lightArrayMountedToggles = new Dictionary<int, Toggle>();
+    public Dictionary<int, Toggle> lightArrayMountedToggles = new Dictionary<int, Toggle>();
 
-    private class LightPropertyRefs
+    public class LightPropertyRefs
     {
         public TMP_InputField range, intensity;
         public TMP_InputField colorR, colorG, colorB;
     }
 
-    private Dictionary<int, LightPropertyRefs> lightPropertyFields = new Dictionary<int, LightPropertyRefs>();
+    public Dictionary<int, LightPropertyRefs> lightPropertyFields = new Dictionary<int, LightPropertyRefs>();
 
     // ---------------------------------------------------------
     // Parameter Distribution
@@ -174,13 +181,17 @@ public class MenuController : MonoBehaviour
     private bool isMenuOpen = false;
     private int sampleCount = 10000;
 
-    private List<GameObject> addedCameras = new List<GameObject>();
-    private Dictionary<int, bool> lightArrayMountedStates = new Dictionary<int, bool>();
+    public List<GameObject> addedCameras = new List<GameObject>();
+    public Dictionary<int, bool> lightArrayMountedStates = new Dictionary<int, bool>();
 
     private void Start()
     {
 
         settingsMenu = GameObject.Find("SettingsMenu");
+
+        helpButton = GameObject.Find("HelpButton").GetComponent<Button>();
+        helpPopup = GameObject.Find("HelpPopup");
+
         cameraGroup = GameObject.Find("CameraGroup");
 
         cameraContainer = GameObject.Find("CameraContainer").GetComponent<RectTransform>();
@@ -223,6 +234,32 @@ public class MenuController : MonoBehaviour
         if (settingsMenu != null)
         {
             settingsMenu.SetActive(false);
+        }
+
+        if (helpButton != null)
+        {
+            Debug.Log("Adding listener to Help button");
+            helpButton.onClick.AddListener(ShowHelpPopup);
+        }
+
+        if (helpPopup != null)
+        {
+            helpPopup.SetActive(false);
+        }
+
+        if (helpPopup != null)
+        {
+            Button exitHelpButton = helpPopup.transform.Find("ExitButton").GetComponent<Button>();
+            if (exitHelpButton != null)
+            {
+                exitHelpButton.onClick.AddListener(CloseHelpPopup);
+            }
+            else
+            {
+                Debug.LogWarning("Exit button in help popup not found");
+            }
+
+            helpPopup.SetActive(false);
         }
 
         if (menuButton != null)
@@ -378,7 +415,7 @@ public class MenuController : MonoBehaviour
     private void OnTogglePreview(bool value) { }
     private void OnToggleProgressBar(bool value) { }
 
-    private void OnSampleCountChanged(string value)
+    public void OnSampleCountChanged(string value)
     {
         if (string.IsNullOrEmpty(value) || !int.TryParse(value, out int parsedValue))
         {
@@ -413,6 +450,28 @@ public class MenuController : MonoBehaviour
     {
         isMenuOpen = false;
         settingsMenu.SetActive(false);
+    }
+
+    public void ShowHelpPopup()
+    {
+        if (helpPopup != null)
+        {
+            helpPopup.SetActive(true);
+            Debug.Log("Help popup displayed");
+        }
+        else
+        {
+            Debug.LogWarning("Help popup not found");
+        }
+    }
+
+    public void CloseHelpPopup()
+    {
+        if (helpPopup != null)
+        {
+            helpPopup.SetActive(false);
+            Debug.Log("Help popup closed");
+        }
     }
 
     private void InitializeMotionCenterValues()
