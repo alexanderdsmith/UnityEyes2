@@ -4,6 +4,10 @@ using System.IO;
 using System.Collections.Generic;
 using SimpleJSON;
 
+#if UNITY_STANDALONE || UNITY_EDITOR
+using SFB;
+#endif
+
 public class MenuControllerUploadJSON : MonoBehaviour
 {
     [SerializeField] private MenuController menuController;
@@ -32,43 +36,110 @@ public class MenuControllerUploadJSON : MonoBehaviour
 
     private void Start()
     {
+        Debug.Log("MenuControllerUploadJSON Start() called");
+
         if (menuController == null)
         {
-            menuController = FindObjectOfType<MenuController>();
+            menuController = FindFirstObjectByType<MenuController>();
             if (menuController == null)
             {
                 Debug.LogError("MenuController not found. Upload JSON functionality won't work.");
             }
         }
 
+        if (uploadJsonButton == null)
+        {
+            Debug.Log("Looking for Upload JSON button...");
+            uploadJsonButton = GameObject.Find("Upload Button")?.GetComponent<Button>();
+
+            if (uploadJsonButton == null)
+            {
+                Debug.LogError("Upload JSON button reference is still null after attempting to find it.");
+            }
+            else
+            {
+                Debug.Log("Upload JSON button found through GameObject.Find()");
+            }
+        }
+
         if (uploadJsonButton != null)
         {
+            Debug.Log("Upload JSON button found, attaching listener");
+            uploadJsonButton.onClick.RemoveAllListeners(); // Clear any existing listeners
             uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
         }
+        else
+        {
+            Debug.LogError("Upload JSON button reference is null. Please assign it in the Inspector.");
+        }
+
+        // Verify SFB import
+        // VerifySFBImport();
+
+        //if (uploadJsonButton != null)
+        //{
+        //    uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
+        //}
+
+        //if (uploadJsonButton != null)
+        //{
+        //    Debug.Log("----------------------------Upload JSON button found, attaching listener");
+        //    uploadJsonButton.onClick.RemoveAllListeners(); // Clear any existing listeners
+        //    uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
+        //}
+        //else
+        //{
+        //    Debug.LogError("Upload JSON button reference is null. Please assign it in the Inspector.");
+        //}
     }
 
     private void OnUploadJsonClicked()
     {
-        string selectedPath = (jsonPathField != null && !string.IsNullOrEmpty(jsonPathField.text))
-            ? jsonPathField.text
-            : Path.Combine(Application.dataPath, "..", "upload_test.json");
+        #if UNITY_STANDALONE || UNITY_EDITOR
+            string[] paths = StandaloneFileBrowser.OpenFilePanel("Select JSON Config", "", "json", false);
+            if (paths.Length > 0 && File.Exists(paths[0]))
+            {
+                string selectedPath = paths[0];
+                Debug.Log("Selected JSON path: " + selectedPath);
 
-        if (!File.Exists(selectedPath))
-        {
-            Debug.LogWarning("JSON file not found: " + selectedPath);
-            return;
-        }
+                string fileContent = File.ReadAllText(selectedPath);
+                JSONNode configData = JSON.Parse(fileContent);
 
-        string fileContent = File.ReadAllText(selectedPath);
-        JSONNode configData = JSON.Parse(fileContent);
+                if (configData == null)
+                {
+                    Debug.LogError("Failed to parse JSON file: " + selectedPath);
+                    return;
+                }
 
-        if (configData == null)
-        {
-            Debug.LogError("Failed to parse JSON file: " + selectedPath);
-            return;
-        }
+                ApplyConfiguration(configData);
+            }
+            else
+            {
+                Debug.LogWarning("No file selected or file doesn't exist.");
+            }
+        #else
+                Debug.LogWarning("File picker not supported on this platform.");
+        #endif
+        //string selectedPath = (jsonPathField != null && !string.IsNullOrEmpty(jsonPathField.text))
+        //    ? jsonPathField.text
+        //    : Path.Combine(Application.dataPath, "..", "upload_test.json");
 
-        ApplyConfiguration(configData);
+        //if (!File.Exists(selectedPath))
+        //{
+        //    Debug.LogWarning("JSON file not found: " + selectedPath);
+        //    return;
+        //}
+
+        //string fileContent = File.ReadAllText(selectedPath);
+        //JSONNode configData = JSON.Parse(fileContent);
+
+        //if (configData == null)
+        //{
+        //    Debug.LogError("Failed to parse JSON file: " + selectedPath);
+        //    return;
+        //}
+
+        //ApplyConfiguration(configData);
     }
 
     private void ApplyConfiguration(JSONNode configData)

@@ -107,8 +107,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private EyeParameters eyeParameters;
 
-    private bool headlessMode = false;
-
     public bool isSavingData = false;
 
 	private Mesh eyemesh;
@@ -246,12 +244,6 @@ public class SynthesEyesServer : MonoBehaviour{
                 );
                 Debug.Log("Camera array center noise: " + cameraArrayPositionNoise);
                 Debug.Log("Camera array rotation noise: " + cameraArrayRotationNoise);
-            }
-
-            if (rootNode["headless_mode"] != null)
-            {
-                headlessMode = rootNode["headless_mode"].AsInt == 1;
-                Debug.Log($"Headless mode: {headlessMode}");
             }
 
             if (rootNode["eye_parameters"] != null)
@@ -730,6 +722,18 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+    public void UpdateOutputPath(string newPath)
+    {
+        if (!string.IsNullOrEmpty(newPath))
+        {
+            Debug.Log($"Setting output path to: {newPath}");
+            // Create the full output path
+            string outputFolder = Path.Combine(newPath, "imgs");
+            EnsureDirectoryExists(outputFolder);
+            Debug.Log($"Created output directory at: {outputFolder}");
+        }
+    }
+
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
@@ -830,12 +834,26 @@ public class SynthesEyesServer : MonoBehaviour{
 
         framesSaved++;
 
-        if (!headlessMode)
-        {
-            yield return new WaitForEndOfFrame();
-        }
+        //if (!headlessMode)
+        //{
+        //    yield return new WaitForEndOfFrame();
+        //}
 
         int originalCameraIndex = currentCameraIndex;
+
+        string outputPath = "imgs";
+        if (File.Exists(jsonConfigPath))
+        {
+            string jsonData = File.ReadAllText(jsonConfigPath);
+            JSONNode rootNode = JSON.Parse(jsonData);
+            if (rootNode["outputPath"] != null)
+            {
+                string configOutputPath = rootNode["outputPath"];
+                string configOutputFolder = rootNode["outputFolder"] != null ? rootNode["outputFolder"] : "EER_eye_data";
+                outputPath = Path.Combine(configOutputPath, configOutputFolder);
+                EnsureDirectoryExists(outputPath);
+            }
+        }
 
         for (int i = 0; i < cameraList.Count; i++)
         {
@@ -844,11 +862,13 @@ public class SynthesEyesServer : MonoBehaviour{
 
             Debug.Log(cameraName + " frame: " + framesSaved);
 
-            if (!headlessMode)
-            {
-                SwitchCamera(i - currentCameraIndex);
-                yield return new WaitForEndOfFrame();
-            }
+            //if (!headlessMode)
+            //{
+            //    SwitchCamera(i - currentCameraIndex);
+            //    yield return new WaitForEndOfFrame();
+            //}
+
+            SwitchCamera(i - currentCameraIndex);
 
             RenderTexture renderTexture = RenderTexture.GetTemporary(
                 cam.pixelWidth,
@@ -869,19 +889,20 @@ public class SynthesEyesServer : MonoBehaviour{
             RenderTexture.active = null;
 
             byte[] imgBytes = tex.EncodeToJPG();
-            string fileName = string.Format("imgs/{0}_{1}.jpg", framesSaved, cameraName);
+            string fileName = Path.Combine(outputPath, string.Format("{0}_{1}.jpg", framesSaved, cameraName));
             File.WriteAllBytes(fileName, imgBytes);
 
             RenderTexture.ReleaseTemporary(renderTexture);
             Object.Destroy(tex);
         }
 
-        saveAllCamerasDetails(framesSaved);
+        saveAllCamerasDetails(framesSaved, outputPath);
 
-        if (!headlessMode)
-        {
-            SwitchCamera(originalCameraIndex - currentCameraIndex);
-        }
+        //if (!headlessMode)
+        //{
+        //    SwitchCamera(originalCameraIndex - currentCameraIndex);
+        //}
+        SwitchCamera(originalCameraIndex - currentCameraIndex);
     }
 
     public void ResetFrameCounter()
@@ -960,7 +981,7 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
 
-    private void saveAllCamerasDetails(int frame)
+    private void saveAllCamerasDetails(int frame, string outputPath = "imgs")
     {
         JSONNode rootNode = new JSONClass();
 
@@ -1011,6 +1032,7 @@ public class SynthesEyesServer : MonoBehaviour{
             cameraNode.Add("ground_truth", eyeball.GetGazeVector(cam));
         }
 
-        File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
+        string filePath = Path.Combine(outputPath, string.Format("{0}.json", frame));
+        File.WriteAllText(filePath, rootNode.ToJSON(0));
     }
 }

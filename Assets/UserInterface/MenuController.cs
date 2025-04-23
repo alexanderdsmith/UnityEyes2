@@ -6,6 +6,10 @@ using SimpleJSON;
 using System.Linq;
 using TMPro;
 
+#if UNITY_STANDALONE || UNITY_EDITOR
+using SFB;
+#endif
+
 public class MenuController : MonoBehaviour
 {
     [SerializeField] private GameObject settingsMenu;
@@ -32,6 +36,9 @@ public class MenuController : MonoBehaviour
     [SerializeField] private InputField projectNameField;
     [SerializeField] private InputField versionField;
     [SerializeField] private InputField repositoryURLField;
+
+    [Header("Output Location")]
+    [SerializeField] private Button outputLocationButton;
 
     // ---------------------------------------------------------
     // Motion Center
@@ -132,20 +139,35 @@ public class MenuController : MonoBehaviour
     public Dictionary<int, LightPropertyRefs> lightPropertyFields = new Dictionary<int, LightPropertyRefs>();
 
     // ---------------------------------------------------------
-    // Parameter Distribution
-    // ---------------------------------------------------------
-    [Header("Parameter Distribution")]
-    [SerializeField] private Toggle randomizeEyePoseToggle;
-    [SerializeField] private InputField distributionTypeField;
-    [SerializeField] private InputField distributionParamsField;
-
-    // ---------------------------------------------------------
     // Face & Eye Appearance
     // ---------------------------------------------------------
     [Header("Face & Eye Appearance")]
     [SerializeField] private Toggle enableMorphTargetsToggle;
     [SerializeField] private InputField facialBlendshapesField;
     [SerializeField] private InputField textureVariationsField;
+
+    public Dictionary<string, Dictionary<string, float>> eyeParameterValues =
+        new Dictionary<string, Dictionary<string, float>>();
+
+    public class MinMaxInputRefs
+    {
+        public TMP_InputField min, max;
+    }
+
+    public Dictionary<string, MinMaxInputRefs> eyeSizeInputFields =
+        new Dictionary<string, MinMaxInputRefs>();
+    public Dictionary<string, InputFieldRefs> eyeParamInputFields =
+        new Dictionary<string, InputFieldRefs>();
+
+    [SerializeField] private GameObject eyeParamGroup;
+
+    // ---------------------------------------------------------
+    // Parameter Distribution
+    // ---------------------------------------------------------
+    [Header("Parameter Distribution")]
+    [SerializeField] private Toggle randomizeEyePoseToggle;
+    [SerializeField] private InputField distributionTypeField;
+    [SerializeField] private InputField distributionParamsField;
 
     // ---------------------------------------------------------
     // Environment & Lighting
@@ -160,7 +182,7 @@ public class MenuController : MonoBehaviour
     // ---------------------------------------------------------
     [Header("Dataset Generation")]
     [SerializeField] private InputField sampleCountField;
-    [SerializeField] private Toggle headlessModeToggle;
+    //[SerializeField] private Toggle headlessModeToggle;
     [SerializeField] private Button generateDatasetButton;
 
     // ---------------------------------------------------------
@@ -188,9 +210,6 @@ public class MenuController : MonoBehaviour
     {
 
         settingsMenu = GameObject.Find("SettingsMenu");
-
-        helpButton = GameObject.Find("HelpButton").GetComponent<Button>();
-        helpPopup = GameObject.Find("HelpPopup");
 
         cameraGroup = GameObject.Find("CameraGroup");
 
@@ -220,6 +239,15 @@ public class MenuController : MonoBehaviour
             numSamplesField.text = sampleCount.ToString();
         }
 
+        if (outputLocationButton == null)
+        {
+            outputLocationButton = GameObject.Find("Output Location Button")?.GetComponent<Button>();
+            if (outputLocationButton != null)
+            {
+                outputLocationButton.onClick.AddListener(SelectOutputFolder);
+            }
+        }
+
         if (motionCenterToggle != null)
         {
             motionCenterToggle.onValueChanged.AddListener(OnToggleMotionCenter);
@@ -234,32 +262,6 @@ public class MenuController : MonoBehaviour
         if (settingsMenu != null)
         {
             settingsMenu.SetActive(false);
-        }
-
-        if (helpButton != null)
-        {
-            Debug.Log("Adding listener to Help button");
-            helpButton.onClick.AddListener(ShowHelpPopup);
-        }
-
-        if (helpPopup != null)
-        {
-            helpPopup.SetActive(false);
-        }
-
-        if (helpPopup != null)
-        {
-            Button exitHelpButton = helpPopup.transform.Find("ExitButton").GetComponent<Button>();
-            if (exitHelpButton != null)
-            {
-                exitHelpButton.onClick.AddListener(CloseHelpPopup);
-            }
-            else
-            {
-                Debug.LogWarning("Exit button in help popup not found");
-            }
-
-            helpPopup.SetActive(false);
         }
 
         if (menuButton != null)
@@ -321,6 +323,10 @@ public class MenuController : MonoBehaviour
         {
             AddCamera();
         }
+
+        InitializeEyeParameterValues();
+        InitializeEyeParameterInputFields();
+        ApplyEyeParameterValuesToUI();
     }
 
     private void SetupUIListeners()
@@ -368,8 +374,8 @@ public class MenuController : MonoBehaviour
         // Dataset Generation
         if (sampleCountField != null)
             sampleCountField.onEndEdit.AddListener(OnSampleCountChanged);
-        if (headlessModeToggle != null)
-            headlessModeToggle.onValueChanged.AddListener(OnToggleHeadlessMode);
+        //if (headlessModeToggle != null)
+        //    headlessModeToggle.onValueChanged.AddListener(OnToggleHeadlessMode);
         if (generateDatasetButton != null)
             generateDatasetButton.onClick.AddListener(OnGenerateDatasetClicked);
 
@@ -409,11 +415,58 @@ public class MenuController : MonoBehaviour
     private void OnLightIntensityChanged(float value) { }
     private void OnToggleHeadlessMode(bool value) { }
     private void OnGenerateDatasetClicked() { }
-    private void OnOutputPathChanged(string value) { }
     private void OnToggleSaveMetadata(bool value) { }
     private void OnAnnotationFormatChanged(int value) { }
     private void OnTogglePreview(bool value) { }
     private void OnToggleProgressBar(bool value) { }
+
+    public void SelectOutputFolder()
+    {
+        #if UNITY_STANDALONE || UNITY_EDITOR
+                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", "", false);
+                if (paths.Length > 0 && Directory.Exists(paths[0]))
+                {
+                    string selectedPath = paths[0];
+                    Debug.Log("Selected output path: " + selectedPath);
+
+                    if (outputPathField != null)
+                    {
+                        outputPathField.text = selectedPath;
+                        OnOutputPathChanged(selectedPath);
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning("No folder selected or folder doesn't exist.");
+                }
+        #else
+                Debug.LogWarning("Folder picker not supported on this platform.");
+        #endif
+    }
+
+
+    private void OnOutputPathChanged(string value)
+    {
+        Debug.Log($"Output path changed to: {value}");
+        if (synthesEyesServer != null)
+        {
+            synthesEyesServer.UpdateOutputPath(value);
+        }
+    }
+
+    //public void UpdateOutputPath(string newPath)
+    //{
+    //    string outputFolder = "imgs"; 
+
+    //    if (!string.IsNullOrEmpty(newPath))
+    //    {
+    //        string fullPath = Path.Combine(newPath, outputFolder);
+    //        EnsureDirectoryExists(fullPath);
+
+    //        outputFolder = fullPath;
+    //        Debug.Log($"Output path updated to: {fullPath}");
+    //    }
+    //}
 
     public void OnSampleCountChanged(string value)
     {
@@ -450,28 +503,6 @@ public class MenuController : MonoBehaviour
     {
         isMenuOpen = false;
         settingsMenu.SetActive(false);
-    }
-
-    public void ShowHelpPopup()
-    {
-        if (helpPopup != null)
-        {
-            helpPopup.SetActive(true);
-            Debug.Log("Help popup displayed");
-        }
-        else
-        {
-            Debug.LogWarning("Help popup not found");
-        }
-    }
-
-    public void CloseHelpPopup()
-    {
-        if (helpPopup != null)
-        {
-            helpPopup.SetActive(false);
-            Debug.Log("Help popup closed");
-        }
     }
 
     private void InitializeMotionCenterValues()
@@ -1154,6 +1185,230 @@ public class MenuController : MonoBehaviour
         lightGroupValues[lightId][groupName][fieldName] = parsedValue;
     }
 
+    private void InitializeEyeParameterValues()
+    {
+        eyeParameterValues["PupilSize"] = new Dictionary<string, float>();
+        eyeParameterValues["PupilSize"]["min"] = 0.2f;
+        eyeParameterValues["PupilSize"]["max"] = 0.2f;
+
+        eyeParameterValues["IrisSize"] = new Dictionary<string, float>();
+        eyeParameterValues["IrisSize"]["min"] = 10.0f;
+        eyeParameterValues["IrisSize"]["max"] = 10.0f;
+
+        eyeParameterValues["EyeProperties"] = new Dictionary<string, float>();
+        eyeParameterValues["EyeProperties"]["pitch"] = 0f;
+        eyeParameterValues["EyeProperties"]["yaw"] = 0f;
+        eyeParameterValues["EyeProperties"]["pitchnoise"] = 15f;
+        eyeParameterValues["EyeProperties"]["yawnoise"] = 20f;
+    }
+
+    private void InitializeEyeParameterInputFields()
+    {
+        eyeSizeInputFields["PupilSize"] = new MinMaxInputRefs();
+        eyeSizeInputFields["IrisSize"] = new MinMaxInputRefs();
+        eyeParamInputFields["EyeProperties"] = new InputFieldRefs();
+
+        if (eyeParamGroup != null)
+        {
+            Transform pupilSizeGroup = eyeParamGroup.transform.Find("PupilSizeGroup");
+            if (pupilSizeGroup != null)
+            {
+                eyeSizeInputFields["PupilSize"].min = pupilSizeGroup.Find("PupilSizeMinInput").GetComponent<TMP_InputField>();
+                eyeSizeInputFields["PupilSize"].max = pupilSizeGroup.Find("PupilSizeMaxInput").GetComponent<TMP_InputField>();
+
+                SetupMinMaxInputListener(eyeSizeInputFields["PupilSize"].min, "PupilSize", "min");
+                SetupMinMaxInputListener(eyeSizeInputFields["PupilSize"].max, "PupilSize", "max");
+            }
+
+            Transform irisSizeGroup = eyeParamGroup.transform.Find("IrisSizeGroup");
+            if (irisSizeGroup != null)
+            {
+                eyeSizeInputFields["IrisSize"].min = irisSizeGroup.Find("IrisSizeMinInput").GetComponent<TMP_InputField>();
+                eyeSizeInputFields["IrisSize"].max = irisSizeGroup.Find("IrisSizeMaxInput").GetComponent<TMP_InputField>();
+
+                SetupMinMaxInputListener(eyeSizeInputFields["IrisSize"].min, "IrisSize", "min");
+                SetupMinMaxInputListener(eyeSizeInputFields["IrisSize"].max, "IrisSize", "max");
+            }
+
+            Transform eyePropertiesGroup = eyeParamGroup.transform.Find("EyePropertiesGroup");
+            if (eyePropertiesGroup != null)
+            {
+                TMP_InputField pitchField = eyePropertiesGroup.Find("EyePitchInput").GetComponent<TMP_InputField>();
+                TMP_InputField yawField = eyePropertiesGroup.Find("EyeYawInput").GetComponent<TMP_InputField>();
+                TMP_InputField pitchNoiseField = eyePropertiesGroup.Find("EyePitchNoiseInput").GetComponent<TMP_InputField>();
+                TMP_InputField yawNoiseField = eyePropertiesGroup.Find("EyeYawNoiseInput").GetComponent<TMP_InputField>();
+
+                if (pitchField != null)
+                {
+                    eyeParamInputFields["EyeProperties"].rx = pitchField; 
+                    SetupEyePropertyListener(pitchField, "pitch");
+                }
+
+                if (yawField != null)
+                {
+                    eyeParamInputFields["EyeProperties"].ry = yawField;
+                    SetupEyePropertyListener(yawField, "yaw");
+                }
+
+                if (pitchNoiseField != null)
+                {
+                    eyeParamInputFields["EyeProperties"].x = pitchNoiseField;
+                    SetupEyePropertyListener(pitchNoiseField, "pitchnoise");
+                }
+
+                if (yawNoiseField != null)
+                {
+                    eyeParamInputFields["EyeProperties"].y = yawNoiseField;
+                    SetupEyePropertyListener(yawNoiseField, "yawnoise");
+                }
+            }
+        }
+    }
+
+    private void ApplyEyeParameterValuesToUI()
+    {
+        if (eyeSizeInputFields.ContainsKey("PupilSize") && eyeParameterValues.ContainsKey("PupilSize"))
+        {
+            var pupilSizeFields = eyeSizeInputFields["PupilSize"];
+            var pupilSizeValues = eyeParameterValues["PupilSize"];
+
+            if (pupilSizeFields.min != null && pupilSizeValues.ContainsKey("min"))
+                pupilSizeFields.min.text = pupilSizeValues["min"].ToString();
+
+            if (pupilSizeFields.max != null && pupilSizeValues.ContainsKey("max"))
+                pupilSizeFields.max.text = pupilSizeValues["max"].ToString();
+        }
+
+        if (eyeSizeInputFields.ContainsKey("IrisSize") && eyeParameterValues.ContainsKey("IrisSize"))
+        {
+            var irisSizeFields = eyeSizeInputFields["IrisSize"];
+            var irisSizeValues = eyeParameterValues["IrisSize"];
+
+            if (irisSizeFields.min != null && irisSizeValues.ContainsKey("min"))
+                irisSizeFields.min.text = irisSizeValues["min"].ToString();
+
+            if (irisSizeFields.max != null && irisSizeValues.ContainsKey("max"))
+                irisSizeFields.max.text = irisSizeValues["max"].ToString();
+        }
+
+        if (eyeParamInputFields.ContainsKey("EyeProperties") && eyeParameterValues.ContainsKey("EyeProperties"))
+        {
+            var eyePropertyFields = eyeParamInputFields["EyeProperties"];
+            var eyePropertyValues = eyeParameterValues["EyeProperties"];
+
+            if (eyePropertyFields.rx != null && eyePropertyValues.ContainsKey("pitch"))
+                eyePropertyFields.rx.text = eyePropertyValues["pitch"].ToString();
+
+            if (eyePropertyFields.ry != null && eyePropertyValues.ContainsKey("yaw"))
+                eyePropertyFields.ry.text = eyePropertyValues["yaw"].ToString();
+
+            if (eyePropertyFields.x != null && eyePropertyValues.ContainsKey("pitchnoise"))
+                eyePropertyFields.x.text = eyePropertyValues["pitchnoise"].ToString();
+
+            if (eyePropertyFields.y != null && eyePropertyValues.ContainsKey("yawnoise"))
+                eyePropertyFields.y.text = eyePropertyValues["yawnoise"].ToString();
+        }
+
+        Debug.Log("Eye parameter values applied to UI");
+    }
+
+    private void SetupMinMaxInputListener(TMP_InputField inputField, string paramName, string minMaxField)
+    {
+        if (inputField == null)
+            return;
+
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onValueChanged.AddListener((value) => {
+            OnEyeSizeValueChanged(paramName, minMaxField, value);
+        });
+
+        inputField.onEndEdit.AddListener((value) => {
+            OnEyeSizeValueChanged(paramName, minMaxField, value);
+        });
+    }
+
+    private void SetupEyePropertyListener(TMP_InputField inputField, string propertyName)
+    {
+        if (inputField == null)
+            return;
+
+        inputField.onValueChanged.RemoveAllListeners();
+        inputField.onEndEdit.RemoveAllListeners();
+
+        inputField.onValueChanged.AddListener((value) => {
+            OnEyePropertyValueChanged(propertyName, value);
+        });
+
+        inputField.onEndEdit.AddListener((value) => {
+            OnEyePropertyValueChanged(propertyName, value);
+        });
+    }
+
+    private void OnEyeSizeValueChanged(string paramName, string minMaxField, string value)
+    {
+        if (!eyeParameterValues.ContainsKey(paramName))
+        {
+            Debug.LogError($"Parameter '{paramName}' not found for Eye Parameters");
+            eyeParameterValues[paramName] = new Dictionary<string, float>();
+        }
+
+        float parsedValue;
+
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out parsedValue))
+        {
+            if (paramName == "PupilSize")
+                parsedValue = 0.2f;
+            else if (paramName == "IrisSize")
+                parsedValue = 10.0f;
+            else
+                parsedValue = 0f;
+
+            Debug.LogWarning($"Could not parse '{value}' as float for Eye Parameters.{paramName}.{minMaxField}, using default: {parsedValue}");
+        }
+
+        eyeParameterValues[paramName][minMaxField] = parsedValue;
+        Debug.Log($"Updated Eye Parameters.{paramName}.{minMaxField} to {parsedValue}");
+    }
+
+    private void OnEyePropertyValueChanged(string propertyName, string value)
+    {
+        if (!eyeParameterValues.ContainsKey("EyeProperties"))
+        {
+            Debug.LogError("EyeProperties not found for Eye Parameters");
+            eyeParameterValues["EyeProperties"] = new Dictionary<string, float>();
+        }
+
+        float parsedValue;
+
+        if (string.IsNullOrEmpty(value) || !float.TryParse(value, out parsedValue))
+        {
+            switch (propertyName)
+            {
+                case "pitch":
+                case "yaw":
+                    parsedValue = 0f;
+                    break;
+                case "pitchnoise":
+                    parsedValue = 15f;
+                    break;
+                case "yawnoise":
+                    parsedValue = 20f;
+                    break;
+                default:
+                    parsedValue = 0f;
+                    break;
+            }
+
+            Debug.LogWarning($"Could not parse '{value}' as float for Eye Properties.{propertyName}, using default: {parsedValue}");
+        }
+
+        eyeParameterValues["EyeProperties"][propertyName] = parsedValue;
+        Debug.Log($"Updated Eye Properties.{propertyName} to {parsedValue}");
+    }
+
+
     private void RestoreInputValues()
     {
         foreach (var cameraEntry in cameraGroupValues)
@@ -1313,6 +1568,51 @@ public class MenuController : MonoBehaviour
                 inputRefs.rz.text = values["rz"].ToString();
         }
 
+
+        // Restore eye parameter values
+        if (eyeSizeInputFields.ContainsKey("PupilSize") && eyeParameterValues.ContainsKey("PupilSize"))
+        {
+            var pupilSizeFields = eyeSizeInputFields["PupilSize"];
+            var pupilSizeValues = eyeParameterValues["PupilSize"];
+
+            if (pupilSizeFields.min != null && pupilSizeValues.ContainsKey("min"))
+                pupilSizeFields.min.text = pupilSizeValues["min"].ToString();
+
+            if (pupilSizeFields.max != null && pupilSizeValues.ContainsKey("max"))
+                pupilSizeFields.max.text = pupilSizeValues["max"].ToString();
+        }
+
+        if (eyeSizeInputFields.ContainsKey("IrisSize") && eyeParameterValues.ContainsKey("IrisSize"))
+        {
+            var irisSizeFields = eyeSizeInputFields["IrisSize"];
+            var irisSizeValues = eyeParameterValues["IrisSize"];
+
+            if (irisSizeFields.min != null && irisSizeValues.ContainsKey("min"))
+                irisSizeFields.min.text = irisSizeValues["min"].ToString();
+
+            if (irisSizeFields.max != null && irisSizeValues.ContainsKey("max"))
+                irisSizeFields.max.text = irisSizeValues["max"].ToString();
+        }
+
+        if (eyeParamInputFields.ContainsKey("EyeProperties") && eyeParameterValues.ContainsKey("EyeProperties"))
+        {
+            var eyePropertyFields = eyeParamInputFields["EyeProperties"];
+            var eyePropertyValues = eyeParameterValues["EyeProperties"];
+
+            if (eyePropertyFields.rx != null && eyePropertyValues.ContainsKey("pitch"))
+                eyePropertyFields.rx.text = eyePropertyValues["pitch"].ToString();
+
+            if (eyePropertyFields.ry != null && eyePropertyValues.ContainsKey("yaw"))
+                eyePropertyFields.ry.text = eyePropertyValues["yaw"].ToString();
+
+            // Add pitch noise and yaw noise
+            if (eyePropertyFields.x != null && eyePropertyValues.ContainsKey("pitchnoise"))
+                eyePropertyFields.x.text = eyePropertyValues["pitchnoise"].ToString();
+
+            if (eyePropertyFields.y != null && eyePropertyValues.ContainsKey("yawnoise"))
+                eyePropertyFields.y.text = eyePropertyValues["yawnoise"].ToString();
+        }
+
         if (numSamplesField != null)
         {
             numSamplesField.text = sampleCount.ToString();
@@ -1323,10 +1623,19 @@ public class MenuController : MonoBehaviour
     {
         JSONNode rootNode = new JSONClass();
 
-        rootNode.Add("outputPath", new JSONData(outputPathField?.text ?? "~/data/"));
+        if (outputPathField != null && !string.IsNullOrEmpty(outputPathField.text))
+        {
+            Debug.Log($"Saving configuration with output path: {outputPathField.text}");
+            rootNode.Add("outputPath", new JSONData(outputPathField.text));
+        }
+        else
+        {
+            Debug.Log("Output path is empty, using default");
+            rootNode.Add("outputPath", new JSONData("~/data/"));
+        }
         rootNode.Add("outputFolder", new JSONData(outputFolderField?.text ?? "EER_eye_data"));
         rootNode.Add("num_samples", new JSONData(sampleCount));
-        rootNode.Add("headless_mode", new JSONData(0));
+        //rootNode.Add("headless_mode", new JSONData(0));
 
         rootNode.Add("motion_center", new JSONData(motionCenterToggle != null && motionCenterToggle.isOn ? 1 : 0));
 
@@ -1512,24 +1821,78 @@ public class MenuController : MonoBehaviour
             lightsArray.Add(lightNode);
         }
 
+        //JSONNode eyeParametersNode = new JSONClass();
+
+
+
+        //JSONNode eyeParametersNode = new JSONClass();
+
+        //JSONNode pupilSizeRangeNode = new JSONClass();
+        //pupilSizeRangeNode.Add("min", new JSONData(0.2f));
+        //pupilSizeRangeNode.Add("max", new JSONData(0.2f));
+        //eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
+
+        //JSONNode irisSizeRangeNode = new JSONClass();
+        //irisSizeRangeNode.Add("min", new JSONData(10.0f));
+        //irisSizeRangeNode.Add("max", new JSONData(10.0f));
+        //eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
+
+        //eyeParametersNode.Add("default_yaw", new JSONData(0f));
+        //eyeParametersNode.Add("default_pitch", new JSONData(0f));
+        //eyeParametersNode.Add("yaw_noise", new JSONData(20f));
+        //eyeParametersNode.Add("pitch_noise", new JSONData(15f));
+
+        //rootNode.Add("eye_parameters", eyeParametersNode);
+
         JSONNode eyeParametersNode = new JSONClass();
 
         JSONNode pupilSizeRangeNode = new JSONClass();
-        pupilSizeRangeNode.Add("min", new JSONData(0.2f));
-        pupilSizeRangeNode.Add("max", new JSONData(0.2f));
+        if (eyeParameterValues.ContainsKey("PupilSize"))
+        {
+            var pupilSizeValues = eyeParameterValues["PupilSize"];
+            pupilSizeRangeNode.Add("min", new JSONData(pupilSizeValues.ContainsKey("min") ? pupilSizeValues["min"] : 0.2f));
+            pupilSizeRangeNode.Add("max", new JSONData(pupilSizeValues.ContainsKey("max") ? pupilSizeValues["max"] : 0.2f));
+        }
+        else
+        {
+            pupilSizeRangeNode.Add("min", new JSONData(0.2f));
+            pupilSizeRangeNode.Add("max", new JSONData(0.2f));
+        }
         eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
 
         JSONNode irisSizeRangeNode = new JSONClass();
-        irisSizeRangeNode.Add("min", new JSONData(10.0f));
-        irisSizeRangeNode.Add("max", new JSONData(10.0f));
+        if (eyeParameterValues.ContainsKey("IrisSize"))
+        {
+            var irisSizeValues = eyeParameterValues["IrisSize"];
+            irisSizeRangeNode.Add("min", new JSONData(irisSizeValues.ContainsKey("min") ? irisSizeValues["min"] : 10.0f));
+            irisSizeRangeNode.Add("max", new JSONData(irisSizeValues.ContainsKey("max") ? irisSizeValues["max"] : 10.0f));
+        }
+        else
+        {
+            irisSizeRangeNode.Add("min", new JSONData(10.0f));
+            irisSizeRangeNode.Add("max", new JSONData(10.0f));
+        }
         eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
 
-        eyeParametersNode.Add("default_yaw", new JSONData(0f));
-        eyeParametersNode.Add("default_pitch", new JSONData(0f));
-        eyeParametersNode.Add("yaw_noise", new JSONData(20f));
-        eyeParametersNode.Add("pitch_noise", new JSONData(15f));
+        if (eyeParameterValues.ContainsKey("EyeProperties"))
+        {
+            var eyeProps = eyeParameterValues["EyeProperties"];
+            eyeParametersNode.Add("default_yaw", new JSONData(eyeProps.ContainsKey("yaw") ? eyeProps["yaw"] : 0f));
+            eyeParametersNode.Add("default_pitch", new JSONData(eyeProps.ContainsKey("pitch") ? eyeProps["pitch"] : 0f));
+            eyeParametersNode.Add("yaw_noise", new JSONData(eyeProps.ContainsKey("yawnoise") ? eyeProps["yawnoise"] : 20f));
+            eyeParametersNode.Add("pitch_noise", new JSONData(eyeProps.ContainsKey("pitchnoise") ? eyeProps["pitchnoise"] : 15f));
+        }
+        else
+        {
+            eyeParametersNode.Add("default_yaw", new JSONData(0f));
+            eyeParametersNode.Add("default_pitch", new JSONData(0f));
+            eyeParametersNode.Add("yaw_noise", new JSONData(20f));
+            eyeParametersNode.Add("pitch_noise", new JSONData(15f));
+        }
 
         rootNode.Add("eye_parameters", eyeParametersNode);
+
+        // After creating eye_parameters node but before adding it to rootNode
 
         // Save to file
         try
@@ -1555,7 +1918,11 @@ public class MenuController : MonoBehaviour
         }
     }
 
-
+    private TMP_InputField FindInputField(Transform parent, string name)
+    {
+        Transform found = FindChildByName(parent, name);
+        return found?.GetComponent<TMP_InputField>();
+    }
 
     private Transform FindChildByName(Transform parent, string childName)
     {
