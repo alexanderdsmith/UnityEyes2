@@ -550,7 +550,7 @@ public class MenuController : MonoBehaviour
                 string fieldName = inputField.name.Replace("Input", "").ToLower();
                 StoreMotionCenterInputFieldReference("CameraArrayCenterNoise", fieldName, inputField);
                 SetupMotionCenterInputFieldListener(inputField, "CameraArrayCenterNoise", fieldName);
-                inputField.text = "0"; // Initialize to 0
+                inputField.text = "0"; 
             }
         }
     }
