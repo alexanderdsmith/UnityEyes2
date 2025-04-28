@@ -70,7 +70,8 @@ public class EyeballController : MonoBehaviour {
     public void RandomizeEyeball() {
 
         // Slightly decrease iris size on random
-        irisSize = Random.Range(0.9f, 1.0f);
+        // irisSize = Random.Range(0.9f, 1.0f);
+        irisSize = Random.Range(irisSizeMin, irisSizeMax);
 
         Mesh mesh = GetComponent<MeshFilter>().mesh;
         Vector3[] vertices = mesh.vertices;
@@ -91,8 +92,10 @@ public class EyeballController : MonoBehaviour {
         // TODO: Randomize pupil size based on clamped uniform distribution instead of gaussian noise
         // float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
         // eyeMaterial.SetFloat("_PupilSize", pupilSize);
-        eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
+        //eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
 
+        float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
+        eyeMaterial.SetFloat("_PupilSize", pupilSize);
 
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);
         else eyeMaterial.SetTexture("_MainTex", colorTexs[Random.Range(0, colorTexs.Count)]);

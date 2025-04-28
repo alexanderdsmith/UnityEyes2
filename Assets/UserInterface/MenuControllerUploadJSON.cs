@@ -95,7 +95,7 @@ public class MenuControllerUploadJSON : MonoBehaviour
 
     private void OnUploadJsonClicked()
     {
-        #if UNITY_STANDALONE || UNITY_EDITOR
+#if UNITY_STANDALONE || UNITY_EDITOR
             string[] paths = StandaloneFileBrowser.OpenFilePanel("Select JSON Config", "", "json", false);
             if (paths.Length > 0 && File.Exists(paths[0]))
             {
@@ -117,9 +117,9 @@ public class MenuControllerUploadJSON : MonoBehaviour
             {
                 Debug.LogWarning("No file selected or file doesn't exist.");
             }
-        #else
-                Debug.LogWarning("File picker not supported on this platform.");
-        #endif
+#else
+        Debug.LogWarning("File picker not supported on this platform.");
+#endif
         //string selectedPath = (jsonPathField != null && !string.IsNullOrEmpty(jsonPathField.text))
         //    ? jsonPathField.text
         //    : Path.Combine(Application.dataPath, "..", "upload_test.json");
@@ -153,22 +153,23 @@ public class MenuControllerUploadJSON : MonoBehaviour
         ApplyGeneralSettings(configData);
         ApplyCameraSettings(configData);
         ApplyLightSettings(configData);
-        // ApplyEyeParameters(configData);
+        ApplyEyeParameters(configData);
 
         Debug.Log("Configuration successfully loaded from JSON.");
     }
 
     private void ApplyGeneralSettings(JSONNode configData)
     {
-        if (configData["outputPath"] != null && menuController.outputPathField != null)
+        if (configData["outputPath"] != null && menuController.outputPathTMP != null)
         {
-            menuController.outputPathField.text = configData["outputPath"];
+            menuController.outputPathTMP.text = configData["outputPath"];
+            menuController.OnOutputPathChanged(configData["outputPath"]);
         }
 
-        if (configData["outputFolder"] != null && menuController.outputFolderField != null)
-        {
-            menuController.outputFolderField.text = configData["outputFolder"];
-        }
+        //if (configData["outputFolder"] != null && menuController.outputFolderField != null)
+        //{
+        //    menuController.outputFolderField.text = configData["outputFolder"];
+        //}
 
         if (configData["num_samples"] != null && menuController.numSamplesField != null)
         {
@@ -376,7 +377,7 @@ public class MenuControllerUploadJSON : MonoBehaviour
         for (int i = 0; i < lightsArray.Count; i++)
         {
             menuController.AddLight();
-            ConfigureLight(i + 1, lightsArray[i]); 
+            ConfigureLight(i + 1, lightsArray[i]);
         }
     }
 
@@ -464,6 +465,94 @@ public class MenuControllerUploadJSON : MonoBehaviour
                     propertyRefs.colorB.text = color["b"].AsFloat.ToString();
             }
         }
+    }
+
+    private void ApplyEyeParameters(JSONNode configData)
+    {
+        if (configData["eye_parameters"] == null)
+        {
+            Debug.Log("No eye parameters found in configuration.");
+            return;
+        }
+
+        JSONNode eyeParams = configData["eye_parameters"];
+
+        if (eyeParams["pupil_size_range"] != null &&
+            menuController.eyeSizeInputFields.ContainsKey("PupilSize"))
+        {
+            JSONNode pupilSizeRange = eyeParams["pupil_size_range"];
+            var pupilSizeFields = menuController.eyeSizeInputFields["PupilSize"];
+
+            if (pupilSizeRange["min"] != null && pupilSizeFields.min != null)
+            {
+                float minValue = pupilSizeRange["min"].AsFloat;
+                pupilSizeFields.min.text = minValue.ToString("0.0");
+                menuController.eyeParameterValues["PupilSize"]["min"] = minValue;
+            }
+
+            if (pupilSizeRange["max"] != null && pupilSizeFields.max != null)
+            {
+                float maxValue = pupilSizeRange["max"].AsFloat;
+                pupilSizeFields.max.text = maxValue.ToString("0.0");
+                menuController.eyeParameterValues["PupilSize"]["max"] = maxValue;
+            }
+        }
+
+        if (eyeParams["iris_size_range"] != null &&
+            menuController.eyeSizeInputFields.ContainsKey("IrisSize"))
+        {
+            JSONNode irisSizeRange = eyeParams["iris_size_range"];
+            var irisSizeFields = menuController.eyeSizeInputFields["IrisSize"];
+
+            if (irisSizeRange["min"] != null && irisSizeFields.min != null)
+            {
+                float minValue = irisSizeRange["min"].AsFloat;
+                irisSizeFields.min.text = minValue.ToString("0.0");
+                menuController.eyeParameterValues["IrisSize"]["min"] = minValue;
+            }
+
+            if (irisSizeRange["max"] != null && irisSizeFields.max != null)
+            {
+                float maxValue = irisSizeRange["max"].AsFloat;
+                irisSizeFields.max.text = maxValue.ToString("0.0");
+                menuController.eyeParameterValues["IrisSize"]["max"] = maxValue;
+            }
+        }
+
+        if (menuController.eyeParamInputFields.ContainsKey("EyeProperties"))
+        {
+            var eyePropertyFields = menuController.eyeParamInputFields["EyeProperties"];
+
+            if (eyeParams["default_pitch"] != null && eyePropertyFields.rx != null)
+            {
+                float pitchValue = eyeParams["default_pitch"].AsFloat;
+                eyePropertyFields.rx.text = pitchValue.ToString("0.0");
+                menuController.eyeParameterValues["EyeProperties"]["pitch"] = pitchValue;
+            }
+
+            if (eyeParams["default_yaw"] != null && eyePropertyFields.ry != null)
+            {
+                float yawValue = eyeParams["default_yaw"].AsFloat;
+                eyePropertyFields.ry.text = yawValue.ToString("0.0");
+                menuController.eyeParameterValues["EyeProperties"]["yaw"] = yawValue;
+            }
+
+            if (eyeParams["pitch_noise"] != null && eyePropertyFields.x != null)
+            {
+                float pitchNoiseValue = eyeParams["pitch_noise"].AsFloat;
+                eyePropertyFields.x.text = pitchNoiseValue.ToString("0.0");
+                menuController.eyeParameterValues["EyeProperties"]["pitchnoise"] = pitchNoiseValue;
+            }
+
+            if (eyeParams["yaw_noise"] != null && eyePropertyFields.y != null)
+            {
+                float yawNoiseValue = eyeParams["yaw_noise"].AsFloat;
+                eyePropertyFields.y.text = yawNoiseValue.ToString("0.0");
+                menuController.eyeParameterValues["EyeProperties"]["yawnoise"] = yawNoiseValue;
+            }
+        }
+
+        Debug.Log("Eye parameters successfully loaded from JSON.");
     }
 }
 

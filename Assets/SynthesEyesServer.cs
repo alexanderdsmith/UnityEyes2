@@ -145,6 +145,14 @@ public class SynthesEyesServer : MonoBehaviour{
 
             if (eyeParameters != null)
             {
+                Debug.Log($"[Eye Parameters Loaded]");
+                Debug.Log($"  Pupil Size Range: min={eyeParameters.pupilSizeRange.x}, max={eyeParameters.pupilSizeRange.y}");
+                Debug.Log($"  Iris Size Range: min={eyeParameters.irisSizeRange.x}, max={eyeParameters.irisSizeRange.y}");
+                Debug.Log($"  Default Yaw: {eyeParameters.defaultYaw}");
+                Debug.Log($"  Default Pitch: {eyeParameters.defaultPitch}");
+                Debug.Log($"  Yaw Noise: {eyeParameters.yawNoise}");
+                Debug.Log($"  Pitch Noise: {eyeParameters.pitchNoise}");
+
                 eyeball.SetPupilSizeRange(eyeParameters.pupilSizeRange);
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
             }
@@ -642,8 +650,16 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         randomizeSceneCallCount++;
 
-        float randomYaw = Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw;
-        float randomPitch = Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch;
+        //float randomYaw = Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw;
+        //float randomPitch = Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch;
+
+        float yawNoise = (eyeParameters != null) ? eyeParameters.yawNoise : eyeYawNoise;
+        float pitchNoise = (eyeParameters != null) ? eyeParameters.pitchNoise : eyePitchNoise;
+        float defaultYaw = (eyeParameters != null) ? eyeParameters.defaultYaw : defaultEyeYaw;
+        float defaultPitch = (eyeParameters != null) ? eyeParameters.defaultPitch : defaultEyePitch;
+
+        float randomYaw = Random.Range(-yawNoise, yawNoise) + defaultYaw;
+        float randomPitch = Random.Range(-pitchNoise, pitchNoise) + defaultPitch;
 
         eyeball.SetEyeRotation(randomYaw, randomPitch);
 
@@ -728,7 +744,7 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             Debug.Log($"Setting output path to: {newPath}");
             // Create the full output path
-            string outputFolder = Path.Combine(newPath, "imgs");
+            string outputFolder = Path.Combine(newPath, "EER_eye_data");
             EnsureDirectoryExists(outputFolder);
             Debug.Log($"Created output directory at: {outputFolder}");
         }
@@ -841,7 +857,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
         int originalCameraIndex = currentCameraIndex;
 
-        string outputPath = "imgs";
+        string outputPath = "EER_eye_data";
         if (File.Exists(jsonConfigPath))
         {
             string jsonData = File.ReadAllText(jsonConfigPath);
@@ -849,8 +865,7 @@ public class SynthesEyesServer : MonoBehaviour{
             if (rootNode["outputPath"] != null)
             {
                 string configOutputPath = rootNode["outputPath"];
-                string configOutputFolder = rootNode["outputFolder"] != null ? rootNode["outputFolder"] : "EER_eye_data";
-                outputPath = Path.Combine(configOutputPath, configOutputFolder);
+                outputPath = Path.Combine(configOutputPath, "EER_eye_data");
                 EnsureDirectoryExists(outputPath);
             }
         }
