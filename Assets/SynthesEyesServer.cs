@@ -118,6 +118,12 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private EyeVisualizationManager visualizationManager;
 
+    /**
+     * Initialize the SynthesEyes scene and camera configuration.
+     *
+     * Loads camera and lighting setup from a JSON configuration file, sets up component references,
+     * and applies eye parameters like pupil and iris size.
+     */
     void Start()
     {
         EnsureDirectoryExists("imgs");
@@ -159,6 +165,16 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Load camera configuration from a JSON file.
+     *
+     * @param {string} configPath - Path to the JSON configuration file.
+     * 
+     * Reads camera intrinsics and extrinsics, motion center settings, and initializes camera GameObjects.
+     * Applies appropriate transformations and noise for realistic variability.
+     * @throws {Exception} If the JSON parsing or object setup fails.
+     */
     private void LoadCamerasFromConfig(string configPath)
     {
         cameraList.Clear();
@@ -610,6 +626,13 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Randomizes camera and light positions and orientations.
+     *
+     * Applies motion noise to camera parent transform or individual cameras depending on motion center setting.
+     * Also randomizes eyeball rotation within a specified noise range.
+     */
     private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
     {
         cam.orthographic = config.is_orthographic;
@@ -649,9 +672,6 @@ public class SynthesEyesServer : MonoBehaviour{
             randomizeSceneStartTime = Time.time;
         }
         randomizeSceneCallCount++;
-
-        //float randomYaw = Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw;
-        //float randomPitch = Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch;
 
         float yawNoise = (eyeParameters != null) ? eyeParameters.yawNoise : eyeYawNoise;
         float pitchNoise = (eyeParameters != null) ? eyeParameters.pitchNoise : eyePitchNoise;
@@ -738,6 +758,14 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Update the file system path where output images and metadata will be saved.
+     *
+     * @param {string} newPath - New directory path for output data.
+     *
+     * Ensures the directory exists and logs the update.
+     */
     public void UpdateOutputPath(string newPath)
     {
         if (!string.IsNullOrEmpty(newPath))
@@ -750,6 +778,14 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Save frame data from all cameras including rendered images and ground truth metadata.
+     *
+     * @returns {IEnumerator} Used as a coroutine to yield after rendering.
+     *
+     * Saves an image and JSON metadata for each camera and handles frame count limits.
+     */
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
@@ -850,11 +886,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
         framesSaved++;
 
-        //if (!headlessMode)
-        //{
-        //    yield return new WaitForEndOfFrame();
-        //}
-
         int originalCameraIndex = currentCameraIndex;
 
         string outputPath = "EER_eye_data";
@@ -876,12 +907,6 @@ public class SynthesEyesServer : MonoBehaviour{
             string cameraName = cam.gameObject.name;
 
             Debug.Log(cameraName + " frame: " + framesSaved);
-
-            //if (!headlessMode)
-            //{
-            //    SwitchCamera(i - currentCameraIndex);
-            //    yield return new WaitForEndOfFrame();
-            //}
 
             SwitchCamera(i - currentCameraIndex);
 
@@ -913,10 +938,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
         saveAllCamerasDetails(framesSaved, outputPath);
 
-        //if (!headlessMode)
-        //{
-        //    SwitchCamera(originalCameraIndex - currentCameraIndex);
-        //}
         SwitchCamera(originalCameraIndex - currentCameraIndex);
     }
 
@@ -996,6 +1017,16 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
 
+    /**
+     * Save 2D projection and metadata from all camera views for a given frame.
+     *
+     * @param {int} frame - Frame index used for naming the output JSON file.
+     * @param {string} outputPath - Directory path where the metadata JSON will be saved. Defaults to "imgs".
+     *
+     * Gathers 2D screen-space coordinates of anatomical landmarks (e.g., iris, caruncle, interior margin)
+     * from all cameras and stores the ground truth gaze vector and poses. Also logs eyeball and lighting details.
+     * Useful for creating labeled datasets for training or evaluation.
+     */
     private void saveAllCamerasDetails(int frame, string outputPath = "imgs")
     {
         JSONNode rootNode = new JSONClass();

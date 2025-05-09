@@ -16,8 +16,8 @@ public class MenuControllerUploadJSON : MonoBehaviour
     // Single JSON Config: "Upload JSON" Button
     // ---------------------------------------------------------
     [Header("Global Config")]
-    [SerializeField] private Button uploadJsonButton;    // Button labeled "Upload JSON"
-    [SerializeField] private InputField jsonPathField;   // Optional: field for the user to type the JSON path
+    [SerializeField] private Button uploadJsonButton;    
+    [SerializeField] private InputField jsonPathField;  
 
     // ---------------------------------------------------------
     // Example UI Fields (Dummy)
@@ -32,8 +32,13 @@ public class MenuControllerUploadJSON : MonoBehaviour
     [SerializeField] private InputField intrinsicsPathField;
     [SerializeField] private InputField extrinsicsPathField;
 
-    // ... (All your other UI fields, toggles, dropdowns, etc.) ...
 
+    /**
+     * Initializes the JSON upload controller.
+     *
+     * Connects to the main MenuController instance and sets up the listener for the "Upload JSON" button.
+     * Verifies button references and prepares the handler for loading configuration files.
+     */
     private void Start()
     {
         Debug.Log("MenuControllerUploadJSON Start() called");
@@ -65,7 +70,7 @@ public class MenuControllerUploadJSON : MonoBehaviour
         if (uploadJsonButton != null)
         {
             Debug.Log("Upload JSON button found, attaching listener");
-            uploadJsonButton.onClick.RemoveAllListeners(); // Clear any existing listeners
+            uploadJsonButton.onClick.RemoveAllListeners();
             uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
         }
         else
@@ -73,26 +78,15 @@ public class MenuControllerUploadJSON : MonoBehaviour
             Debug.LogError("Upload JSON button reference is null. Please assign it in the Inspector.");
         }
 
-        // Verify SFB import
-        // VerifySFBImport();
-
-        //if (uploadJsonButton != null)
-        //{
-        //    uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
-        //}
-
-        //if (uploadJsonButton != null)
-        //{
-        //    Debug.Log("----------------------------Upload JSON button found, attaching listener");
-        //    uploadJsonButton.onClick.RemoveAllListeners(); // Clear any existing listeners
-        //    uploadJsonButton.onClick.AddListener(OnUploadJsonClicked);
-        //}
-        //else
-        //{
-        //    Debug.LogError("Upload JSON button reference is null. Please assign it in the Inspector.");
-        //}
     }
 
+
+    /**
+     * Handles the "Upload JSON" button click.
+     *
+     * Opens a file browser to let the user select a JSON configuration file.
+     * Parses the file and triggers application of its contents to the UI and system.
+     */
     private void OnUploadJsonClicked()
     {
 #if UNITY_STANDALONE || UNITY_EDITOR
@@ -120,28 +114,16 @@ public class MenuControllerUploadJSON : MonoBehaviour
 #else
         Debug.LogWarning("File picker not supported on this platform.");
 #endif
-        //string selectedPath = (jsonPathField != null && !string.IsNullOrEmpty(jsonPathField.text))
-        //    ? jsonPathField.text
-        //    : Path.Combine(Application.dataPath, "..", "upload_test.json");
-
-        //if (!File.Exists(selectedPath))
-        //{
-        //    Debug.LogWarning("JSON file not found: " + selectedPath);
-        //    return;
-        //}
-
-        //string fileContent = File.ReadAllText(selectedPath);
-        //JSONNode configData = JSON.Parse(fileContent);
-
-        //if (configData == null)
-        //{
-        //    Debug.LogError("Failed to parse JSON file: " + selectedPath);
-        //    return;
-        //}
-
-        //ApplyConfiguration(configData);
     }
 
+
+    /**
+     * Applies a full system configuration from a parsed JSON node.
+     *
+     * @param {JSONNode} configData - Parsed JSON object containing all configuration fields.
+     *
+     * Delegates setup to helper functions for general, camera, light, and eye parameter settings.
+     */
     private void ApplyConfiguration(JSONNode configData)
     {
         if (menuController == null)
@@ -158,6 +140,14 @@ public class MenuControllerUploadJSON : MonoBehaviour
         Debug.Log("Configuration successfully loaded from JSON.");
     }
 
+
+    /**
+     * Applies general project-wide configuration settings.
+     *
+     * @param {JSONNode} configData - JSON containing fields like outputPath, sample count, and motion center.
+     *
+     * Updates output path, number of samples, and camera array motion center fields in the UI.
+     */
     private void ApplyGeneralSettings(JSONNode configData)
     {
         if (configData["outputPath"] != null && menuController.outputPathTMP != null)
@@ -166,10 +156,6 @@ public class MenuControllerUploadJSON : MonoBehaviour
             menuController.OnOutputPathChanged(configData["outputPath"]);
         }
 
-        //if (configData["outputFolder"] != null && menuController.outputFolderField != null)
-        //{
-        //    menuController.outputFolderField.text = configData["outputFolder"];
-        //}
 
         if (configData["num_samples"] != null && menuController.numSamplesField != null)
         {
@@ -231,6 +217,14 @@ public class MenuControllerUploadJSON : MonoBehaviour
         }
     }
 
+
+    /**
+     * Applies all camera configuration settings from the loaded JSON.
+     *
+     * @param {JSONNode} configData - JSON array containing per-camera intrinsics, extrinsics, and noise values.
+     *
+     * Dynamically configures the UI for each camera and populates the field values accordingly.
+     */
     private void ApplyCameraSettings(JSONNode configData)
     {
         JSONArray camerasArray = configData["cameras"].AsArray;
@@ -255,6 +249,14 @@ public class MenuControllerUploadJSON : MonoBehaviour
     }
 
 
+    /**
+     * Configures an individual camera's parameters from JSON data.
+     *
+     * @param {int} cameraIndex - Zero-based index of the camera in the configuration array.
+     * @param {JSONNode} cameraData - JSON data for the specific camera's intrinsics, extrinsics, and noise.
+     *
+     * Populates corresponding input fields in the UI with parsed configuration values.
+     */
     private void ConfigureCamera(int cameraIndex, JSONNode cameraData)
     {
         int cameraId = cameraIndex + 1;
@@ -360,6 +362,14 @@ public class MenuControllerUploadJSON : MonoBehaviour
         }
     }
 
+
+    /**
+     * Applies light group settings from the loaded JSON configuration.
+     *
+     * @param {JSONNode} configData - JSON array containing light positioning, noise, and color properties.
+     *
+     * Clears existing lights, recreates each light group, and populates values from the file.
+     */
     private void ApplyLightSettings(JSONNode configData)
     {
         JSONArray lightsArray = configData["lights"].AsArray;
@@ -381,6 +391,15 @@ public class MenuControllerUploadJSON : MonoBehaviour
         }
     }
 
+
+    /**
+     * Configures an individual light's parameters from JSON data.
+     *
+     * @param {int} lightId - 1-based ID for the light group in the UI.
+     * @param {JSONNode} lightData - JSON object with position, noise, and lighting properties.
+     *
+     * Sets toggles and fields for light positioning, color, and array-mounted state.
+     */
     private void ConfigureLight(int lightId, JSONNode lightData)
     {
         if (lightData["array_mounted"] != null && menuController.lightArrayMountedToggles.ContainsKey(lightId))
@@ -467,6 +486,14 @@ public class MenuControllerUploadJSON : MonoBehaviour
         }
     }
 
+
+    /**
+     * Applies eye appearance and gaze-related parameters from JSON configuration.
+     *
+     * @param {JSONNode} configData - JSON object containing ranges for pupil/iris size and default gaze settings.
+     *
+     * Updates the relevant UI fields and internal data for eye modeling and animation.
+     */
     private void ApplyEyeParameters(JSONNode configData)
     {
         if (configData["eye_parameters"] == null)
@@ -555,49 +582,3 @@ public class MenuControllerUploadJSON : MonoBehaviour
         Debug.Log("Eye parameters successfully loaded from JSON.");
     }
 }
-
-
-
-
-
-
-/*
-    /// <summary>
-    /// Called when the user clicks the "Upload JSON" button at the top of the menu.
-    /// In a real implementation, you'd open a file picker or read from 'jsonPathField.text'.
-    /// </summary>
-    private void OnUploadJsonClicked()
-    {
-        // 1) Obtain the path to the JSON file
-        //    - If you have a file browser, set 'selectedPath' from there,
-        //      or simply read it from jsonPathField.text (if you provide that).
-        string selectedPath = (jsonPathField != null) ? jsonPathField.text : "DummyPath.json";
-
-        // 2) Check if file exists (dummy check)
-        if (!File.Exists(selectedPath))
-        {
-            Debug.LogWarning("[Dummy] JSON file not found: " + selectedPath);
-            return;
-        }
-
-        // 3) In real code: read & parse the JSON
-        //    string fileContent = File.ReadAllText(selectedPath);
-        //    MyConfigData configData = JsonUtility.FromJson<MyConfigData>(fileContent);
-
-        Debug.Log("[Dummy] Upload JSON clicked. Pretending to parse file at: " + selectedPath);
-
-        // 4) Populate UI from the (dummy) configData.
-        //    For example, if your configData has 'projectName', 'version', etc.:
-
-        // projectNameField.text = configData.projectName;
-        // versionField.text      = configData.version;
-        // repositoryURLField.text= configData.repositoryURL;
-        // multiCameraToggle.isOn = configData.multiCameraEnabled;
-        // intrinsicsPathField.text  = configData.intrinsicsPath;
-        // extrinsicsPathField.text  = configData.extrinsicsPath;
-        // ... etc.
-
-        // Currently, we'll just do a simple message:
-        Debug.Log("[Dummy] Successfully 'loaded' config from JSON (placeholder).");
-    }
- */

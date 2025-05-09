@@ -206,9 +206,15 @@ public class MenuController : MonoBehaviour
     public List<GameObject> addedCameras = new List<GameObject>();
     public Dictionary<int, bool> lightArrayMountedStates = new Dictionary<int, bool>();
 
+
+    /**
+     * Initialize the main menu UI and all dynamic UI groups.
+     *
+     * Loads UI elements, sets default values, adds event listeners, and initializes camera/light/eye parameter containers.
+     * Also connects to the SynthesEyesServer and populates default state.
+     */
     private void Start()
     {
-
         settingsMenu = GameObject.Find("SettingsMenu");
 
         cameraGroup = GameObject.Find("CameraGroup");
@@ -274,7 +280,6 @@ public class MenuController : MonoBehaviour
 
         SetMotionCenterFieldsInteractable(motionCenterToggle.isOn);
 
-        // Initialize the UI
         if (settingsMenu != null)
         {
             settingsMenu.SetActive(false);
@@ -390,14 +395,10 @@ public class MenuController : MonoBehaviour
         // Dataset Generation
         if (sampleCountField != null)
             sampleCountField.onEndEdit.AddListener(OnSampleCountChanged);
-        //if (headlessModeToggle != null)
-        //    headlessModeToggle.onValueChanged.AddListener(OnToggleHeadlessMode);
         if (generateDatasetButton != null)
             generateDatasetButton.onClick.AddListener(OnGenerateDatasetClicked);
 
         // Ground Truth & Output
-        //if (outputPathField != null)
-        //    outputPathField.onEndEdit.AddListener(OnOutputPathChanged);
         if (saveMetadataToggle != null)
             saveMetadataToggle.onValueChanged.AddListener(OnToggleSaveMetadata);
         if (annotationFormatDropdown != null)
@@ -436,6 +437,12 @@ public class MenuController : MonoBehaviour
     private void OnTogglePreview(bool value) { }
     private void OnToggleProgressBar(bool value) { }
 
+
+    /**
+     * Opens a file browser dialog to allow the user to select an output folder.
+     *
+     * Updates the output path text and notifies the SynthesEyesServer to update its path reference.
+     */
     public void SelectOutputFolder()
     {
         #if UNITY_STANDALONE || UNITY_EDITOR
@@ -465,6 +472,11 @@ public class MenuController : MonoBehaviour
     }
 
 
+    /**
+     * Updates the output path used by SynthesEyesServer when changed in the UI.
+     *
+     * @param {string} value - New output directory path entered or selected by the user.
+     */
     public void OnOutputPathChanged(string value)
     {
         Debug.Log($"Output path changed to: {value}");
@@ -474,20 +486,13 @@ public class MenuController : MonoBehaviour
         }
     }
 
-    //public void UpdateOutputPath(string newPath)
-    //{
-    //    string outputFolder = "imgs"; 
 
-    //    if (!string.IsNullOrEmpty(newPath))
-    //    {
-    //        string fullPath = Path.Combine(newPath, outputFolder);
-    //        EnsureDirectoryExists(fullPath);
-
-    //        outputFolder = fullPath;
-    //        Debug.Log($"Output path updated to: {fullPath}");
-    //    }
-    //}
-
+    /**
+     * Updates the number of samples (images) to generate, based on user input.
+     *
+     * @param {string} value - Input field value representing the sample count.
+     * Validates and clamps to a minimum of 1 if input is invalid or non-positive.
+     */
     public void OnSampleCountChanged(string value)
     {
         if (string.IsNullOrEmpty(value) || !int.TryParse(value, out int parsedValue))
@@ -706,7 +711,6 @@ public class MenuController : MonoBehaviour
         intrinsics["cy"] = 240f;
         intrinsics["width"] = 640f;
         intrinsics["height"] = 480f;
-        // (sensor_width and sensor_height are likely stored separately if you save them elsewhere)
 
         var extrinsics = cameraGroupValues[cameraId]["Extrinsics"];
         extrinsics["x"] = 0f;
@@ -717,6 +721,14 @@ public class MenuController : MonoBehaviour
         extrinsics["rz"] = 0f;
     }
 
+
+    /**
+     * Initializes data structures for a new camera by ID.
+     *
+     * @param {int} cameraId - Unique identifier for the camera group.
+     *
+     * Allocates dictionaries for intrinsics, extrinsics, and their respective noise values.
+     */
     private void InitializeCameraValues(int cameraId)
     {
 
@@ -862,10 +874,14 @@ public class MenuController : MonoBehaviour
         }
 
         cameraGroupValues[cameraId][groupName][fieldName] = parsedValue;
-
-        //Debug.Log($"Updated Camera {cameraId}.{groupName}.{fieldName} to {parsedValue}");
     }
 
+
+    /**
+     * Removes the most recently added camera group.
+     *
+     * Ensures at least one camera remains. Cleans up associated UI objects and internal state.
+     */
     public void RemoveCamera()
     {
         if (addedCameras.Count <= 1)
@@ -913,6 +929,12 @@ public class MenuController : MonoBehaviour
         }
     }
 
+
+    /**
+     * Dynamically adds a new light group to the UI.
+     *
+     * Initializes position, noise, and property parameters, spawns UI panel, and sets default values.
+     */
     public void AddLight()
     {
         LayoutRebuilder.ForceRebuildLayoutImmediate(lightContainer);
@@ -958,6 +980,14 @@ public class MenuController : MonoBehaviour
         Debug.Log($"Added light group: {newLightGroup.name}");
     }
 
+
+    /**
+     * Initializes data structures for a new light by ID.
+     *
+     * @param {int} lightId - Unique identifier for the light group.
+     *
+     * Sets up dictionaries for position, noise, and light-specific properties like color and intensity.
+     */
     private void InitializeLightValues(int lightId)
     {
         lightGroupValues[lightId] = new Dictionary<string, Dictionary<string, float>>();
@@ -988,6 +1018,12 @@ public class MenuController : MonoBehaviour
         lightArrayMountedToggles[lightId] = null;
     }
 
+
+    /**
+     * Removes the most recently added light group.
+     *
+     * Cleans up the UI and removes associated values from light state dictionaries.
+     */
     public void RemoveLight()
     {
         if (addedLights.Count <= 0)
@@ -1230,6 +1266,12 @@ public class MenuController : MonoBehaviour
         lightGroupValues[lightId][groupName][fieldName] = parsedValue;
     }
 
+
+    /**
+     * Sets up default values for all eye-related parameters.
+     *
+     * Initializes pupil size, iris size, and gaze noise values for use in the UI and configuration export.
+     */
     private void InitializeEyeParameterValues()
     {
         eyeParameterValues["PupilSize"] = new Dictionary<string, float>();
@@ -1466,6 +1508,15 @@ public class MenuController : MonoBehaviour
         Debug.Log($"Updated Eye Parameters.{paramName}.{minMaxField} to {parsedValue}");
     }
 
+
+    /**
+     * Updates a single eye property (yaw, pitch, or noise) based on user input.
+     *
+     * @param {string} propertyName - Name of the property to update.
+     * @param {string} value - New value from the input field.
+     *
+     * Performs parsing and clamps or defaults invalid values.
+     */
     private void OnEyePropertyValueChanged(string propertyName, string value)
     {
         if (!eyeParameterValues.ContainsKey("EyeProperties"))
@@ -1713,6 +1764,13 @@ public class MenuController : MonoBehaviour
         }
     }
 
+
+    /**
+     * Serializes the current configuration into a JSON format.
+     *
+     * Captures all camera, light, motion center, and eye parameter settings and writes them to a config file.
+     * This is the primary method for exporting user-defined settings.
+     */
     private void SaveConfiguration()
     {
         JSONNode rootNode = new JSONClass();
@@ -1727,9 +1785,7 @@ public class MenuController : MonoBehaviour
             Debug.Log("Output path is empty, using default");
             rootNode.Add("outputPath", new JSONData("~/../data/"));
         }
-        // rootNode.Add("outputFolder", new JSONData(outputFolderField?.text ?? "EER_eye_data"));
         rootNode.Add("num_samples", new JSONData(sampleCount));
-        //rootNode.Add("headless_mode", new JSONData(0));
 
         rootNode.Add("motion_center", new JSONData(motionCenterToggle != null && motionCenterToggle.isOn ? 1 : 0));
 
@@ -1915,29 +1971,6 @@ public class MenuController : MonoBehaviour
             lightsArray.Add(lightNode);
         }
 
-        //JSONNode eyeParametersNode = new JSONClass();
-
-
-
-        //JSONNode eyeParametersNode = new JSONClass();
-
-        //JSONNode pupilSizeRangeNode = new JSONClass();
-        //pupilSizeRangeNode.Add("min", new JSONData(0.2f));
-        //pupilSizeRangeNode.Add("max", new JSONData(0.2f));
-        //eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
-
-        //JSONNode irisSizeRangeNode = new JSONClass();
-        //irisSizeRangeNode.Add("min", new JSONData(10.0f));
-        //irisSizeRangeNode.Add("max", new JSONData(10.0f));
-        //eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
-
-        //eyeParametersNode.Add("default_yaw", new JSONData(0f));
-        //eyeParametersNode.Add("default_pitch", new JSONData(0f));
-        //eyeParametersNode.Add("yaw_noise", new JSONData(20f));
-        //eyeParametersNode.Add("pitch_noise", new JSONData(15f));
-
-        //rootNode.Add("eye_parameters", eyeParametersNode);
-
         JSONNode eyeParametersNode = new JSONClass();
 
         JSONNode pupilSizeRangeNode = new JSONClass();
@@ -1986,7 +2019,6 @@ public class MenuController : MonoBehaviour
 
         rootNode.Add("eye_parameters", eyeParametersNode);
 
-        // After creating eye_parameters node but before adding it to rootNode
 
         // Save to file
         try
