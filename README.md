@@ -9,8 +9,8 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 
 ## Hotkeys
     s: save image
-    c: randomize camera and eye parameters
-    r: randomize scene parameters
+    c: randomize camera and eye noise
+    r: randomize skin, iris, and pupil parameters
     l: randomize lighting parameters
     h: hide UI button overlays
     p: toggle preview mode

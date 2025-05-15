@@ -358,8 +358,13 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraExtrinsicsPositionNoise.Add(extrinsicsPositionNoise);
                 cameraExtrinsicsRotationNoise.Add(extrinsicsRotationNoise);
 
+                // TODO: setting up this camera is done incorrectly. Use focalLength, principalPoint
+                // and resolution from Unity to set these values.
+                // use Gate Fit
+
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
+
 
                 // Set default values
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
@@ -374,6 +379,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
                 if (intrinsics != null)
                 {
+                    // TODO: these need to be calculated for 
                     if (intrinsics["fx"] != null) camIntrinsics.fx = intrinsics["fx"].AsFloat;
                     if (intrinsics["fy"] != null) camIntrinsics.fy = intrinsics["fy"].AsFloat;
                     if (intrinsics["cx"] != null) camIntrinsics.cx = intrinsics["cx"].AsFloat;
@@ -632,9 +638,30 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         else
         {
+            // sizeX = config.intrinxics.fx * width / ax;
+            // sizeY = config.intrinsics.fy * height / ay;
+
+            // //PlayerSettings.defaultScreenWidth = width;
+            // //PlayerSettings.defaultScreenHeight = height;
+
+            // shiftX = -(x0 - width / 2.0f) / width;
+            // shiftY = (y0 - height / 2.0f) / height;
+
+            // mainCamera.sensorSize = new Vector2(sizeX, sizeY);     // in mm, mx = 1000/x, my = 1000/y
+            // mainCamera.focalLength = f;                            // in mm, ax = f * mx, ay = f * my
+            // mainCamera.lensShift = new Vector2(shiftX, shiftY);
+
+            // TODO: Why was this set up this way? This desperately needs to be resolved.
+            // TODO: might need projection matrix to be modified to set the correct FOV
             float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
             Debug.Log($"Setting FOV to {fov}");
             cam.fieldOfView = fov;
+
+            // cam.principalPoint = new Vector2(config.intrinsics.cx, config.intrinsics.cy);
+
+            // TODO: evaluate in terms of different focal lengths.
+            cam.aspect = (float)config.intrinsics.width / (float)config.intrinsics.height;
+
         }
 
         cam.clearFlags = CameraClearFlags.SolidColor;
@@ -753,7 +780,9 @@ public class SynthesEyesServer : MonoBehaviour{
 
         if (isSavingData || Input.GetKey("c"))
         {
+            ToggleOutputPreview();
             RandomizeScene();
+            ToggleOutputPreview();
         }
 
         if (Input.GetKeyDown("p"))
@@ -763,8 +792,10 @@ public class SynthesEyesServer : MonoBehaviour{
 
         if (isSavingData || Input.GetKey("r"))
         {
+            ToggleOutputPreview();
             eyeRegion.RandomizeAppearance();
             eyeball.RandomizeEyeball();
+            ToggleOutputPreview();
         }
 
         if (isSavingData || Input.GetKey("l"))
