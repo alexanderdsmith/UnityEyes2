@@ -1,5 +1,5 @@
 # UnityEyes2
-Greater camera control for the UnityEyes Package by Erroll Wood, enabling machine learning on specific hardware specifications for eye tracking
+Greater camera control for the UnityEyes Package by Erroll Wood, enabling machine learning on custom hardware specifications for eye tracking
 
 Updated by Alexander Smith and Brijesh Muthumanickam
 
