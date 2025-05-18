@@ -96,7 +96,7 @@ public class MenuController : MonoBehaviour
     [Header("Save Configuration")]
     [SerializeField] private Button saveButton;
     [SerializeField] public TMP_Text outputPathTMP;
-    [SerializeField] public InputField outputFolderField;
+    [SerializeField] public TMP_InputField outputFolderNameTMP;
     [SerializeField] public TMP_InputField numSamplesField;
 
     // ---------------------------------------------------------
@@ -182,7 +182,6 @@ public class MenuController : MonoBehaviour
     // ---------------------------------------------------------
     [Header("Dataset Generation")]
     [SerializeField] private InputField sampleCountField;
-    //[SerializeField] private Toggle headlessModeToggle;
     [SerializeField] private Button generateDatasetButton;
 
     // ---------------------------------------------------------
@@ -245,16 +244,22 @@ public class MenuController : MonoBehaviour
 
         numSamplesField = GameObject.Find("SampleCount").GetComponent<TMP_InputField>();
         outputPathTMP = GameObject.Find("OutputPathTMP")?.GetComponent<TMP_Text>();
+        outputFolderNameTMP = GameObject.Find("OutputFolderName")?.GetComponent<TMP_InputField>();
 
         if (outputPathTMP != null && !string.IsNullOrEmpty(outputPathTMP.text) && synthesEyesServer != null)
         {
-            outputPathTMP.text = "~/../EER_eye_data";
+            outputPathTMP.text = "";
             OnOutputPathChanged(outputPathTMP.text);
+        }
+
+        if (outputFolderNameTMP != null)
+        {
+            outputFolderNameTMP.onEndEdit.AddListener(OnOutputFolderNameChanged);
         }
 
         if (numSamplesField != null)
         {
-            numSamplesField.text = "5000";
+            numSamplesField.text = "1000";
             numSamplesField.text = sampleCount.ToString();
         }
 
@@ -445,30 +450,39 @@ public class MenuController : MonoBehaviour
      */
     public void SelectOutputFolder()
     {
-        #if UNITY_STANDALONE || UNITY_EDITOR
-                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", "", false);
-                if (paths.Length > 0 && Directory.Exists(paths[0]))
-                {
-                    string selectedPath = paths[0];
-                    Debug.Log("Selected output path: " + selectedPath);
-
-                    if (outputPathTMP != null)
-                    {
-                        outputPathTMP.text = selectedPath;
-                        OnOutputPathChanged(selectedPath);
-                    }
-                    else
-                    {
-                        Debug.LogWarning("OutputPathTMP reference is null");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("No folder selected or folder doesn't exist.");
-                }
+        string selectedPath = "";
+        #if UNITY_EDITOR
+            selectedPath = UnityEditor.EditorUtility.OpenFolderPanel("Select Output Folder", "", "");
         #else
-                Debug.LogWarning("Folder picker not supported on this platform.");
+            if (Application.platform == RuntimePlatform.OSXPlayer)
+            {
+                selectedPath = MacNativeFileBrowser.OpenFolderPanel("Select Output Folder", "");
+            }
+            else
+            {
+                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", "", false);
+                if (paths.Length > 0)
+                    selectedPath = paths[0];
+            }
         #endif
+
+        // If no folder was selected, simply return rather than updating anything.
+        if (string.IsNullOrEmpty(selectedPath) || !Directory.Exists(selectedPath))
+        {
+            Debug.LogWarning("No folder selected or folder doesn't exist. Update canceled.");
+            return;
+        }
+
+        Debug.Log("Selected output path: " + selectedPath);
+        if (outputPathTMP != null)
+        {
+            outputPathTMP.text = selectedPath;
+            OnOutputPathChanged(selectedPath);
+        }
+        else
+        {
+            Debug.LogWarning("No valid UI reference found for displaying the output path.");
+        }
     }
 
 
@@ -486,6 +500,25 @@ public class MenuController : MonoBehaviour
         }
     }
 
+    /**
+     * Updates the output folder name used by SynthesEyesServer when changed in the UI.
+     *
+     * @param {string} value - New output folder name entered by the user.
+     */
+    private void OnOutputFolderNameChanged(string value)
+    {
+        Debug.Log($"Output folder name changed to: {value}");
+        if (synthesEyesServer != null)
+        {
+            // Update the server's folder name field.
+            synthesEyesServer.outputFolderName = string.IsNullOrEmpty(value) ? "imgs" : value;
+            // Update output path using the current base folder text.
+            if (outputPathTMP != null)
+            {
+                OnOutputPathChanged(outputPathTMP.text);
+            }
+        }
+    }
 
     /**
      * Updates the number of samples (images) to generate, based on user input.
@@ -1780,11 +1813,7 @@ public class MenuController : MonoBehaviour
             Debug.Log($"Saving configuration with output path: {outputPathTMP.text}");
             rootNode.Add("outputPath", new JSONData(outputPathTMP.text));
         }
-        else
-        {
-            Debug.Log("Output path is empty, using default");
-            rootNode.Add("outputPath", new JSONData("~/../data/"));
-        }
+
         rootNode.Add("num_samples", new JSONData(sampleCount));
 
         rootNode.Add("motion_center", new JSONData(motionCenterToggle != null && motionCenterToggle.isOn ? 1 : 0));
@@ -2023,14 +2052,41 @@ public class MenuController : MonoBehaviour
         // Save to file
         try
         {
-            string path = Path.Combine(Application.dataPath, "..", "camera_config.json");
-            File.WriteAllText(path, rootNode.ToJSON(4)); 
-            Debug.Log($"Configuration saved successfully to: {path}");
+            // Use the user-specified base output folder or fallback to persistentDataPath
+            string baseOutputFolder = !string.IsNullOrEmpty(outputPathTMP?.text)
+                ? outputPathTMP.text
+                : Path.Combine(Application.persistentDataPath, "imgs");
 
-            // Notify SynthesEyesServer to reload configuration
+            // Use the user-specified folder name or default to "imgs"
+            string folderName = !string.IsNullOrEmpty(outputFolderNameTMP?.text)
+                ? outputFolderNameTMP.text
+                : "imgs";
+
+            // Combine them into one variable output_path
+            string output_path = Path.Combine(baseOutputFolder, folderName);
+            if (!Directory.Exists(output_path))
+            {
+                Directory.CreateDirectory(output_path);
+                Debug.Log($"Created images directory: {output_path}");
+            }
+
+            // Save the combined output path into the JSON (for image saving)
+            rootNode.Add("outputPath", new JSONData(output_path));
+
+            // Save other configuration parameters as before…
+            rootNode.Add("num_samples", new JSONData(sampleCount));
+            // … (other config nodes)
+
+            // Save the configuration JSON file to the base output folder (outside the subfolder)
+            string configFilePath = Path.Combine(baseOutputFolder, "camera_config.json");
+            File.WriteAllText(configFilePath, rootNode.ToJSON(4));
+            Debug.Log($"Configuration saved successfully to: {configFilePath}");
+
             if (synthesEyesServer != null)
             {
-                synthesEyesServer.ReloadConfiguration(path);
+                // Notify the server. It should use its own single variable, output_path,
+                // which is now set by reading the saved JSON.
+                synthesEyesServer.ReloadConfiguration(configFilePath);
                 Debug.Log("Notified SynthesEyesServer to reload configuration");
             }
             else
@@ -2043,6 +2099,23 @@ public class MenuController : MonoBehaviour
             Debug.LogError($"Error saving configuration: {e.Message}");
         }
     }
+    // Helper method to test writability of a directory
+        private bool IsDirectoryWritable(string path)
+        {
+            try
+            {
+                // Attempt to create and then delete a temporary file
+                string testFile = Path.Combine(path, Path.GetRandomFileName());
+                using (FileStream fs = File.Create(testFile, 1, FileOptions.DeleteOnClose))
+                {
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
     private TMP_InputField FindInputField(Transform parent, string name)
     {

@@ -81,6 +81,9 @@ public class SynthesEyesServer : MonoBehaviour{
     private int currentCameraIndex = 0;
     public string jsonConfigPath = "camera_config.json";
 
+    private string outputPath;
+    public string outputFolderName = "imgs";
+
     private int maxSamplesToSave = 10000;
 
     // Motion Center Feature
@@ -126,7 +129,6 @@ public class SynthesEyesServer : MonoBehaviour{
      */
     void Start()
     {
-        EnsureDirectoryExists("imgs");
         eyeRegion = eyeRegionObj.GetComponent<EyeRegionController>();
         eyeball = eyeballObj.GetComponent<EyeballController>();
         eyeRegionSubdiv = eyeRegionSubdivObj.GetComponent<SubdivMesh>();
@@ -636,7 +638,7 @@ public class SynthesEyesServer : MonoBehaviour{
     private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
     {
         cam.orthographic = config.is_orthographic;
-        cam.nearClipPlane = 0.3f; 
+        cam.nearClipPlane = 0.1f; 
         cam.farClipPlane = 1000f;
 
         if (config.is_orthographic)
@@ -645,6 +647,21 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         else
         {
+            cam.usePhysicalProperties = true;
+            // lens shift
+
+            cam.lensShift = new Vector2(
+                (config.intrinsics.cx - config.intrinsics.width / 2) / config.intrinsics.width,
+                (config.intrinsics.cy - config.intrinsics.height / 2) / config.intrinsics.height
+            );
+
+            // physical properties
+            cam.sensorSize = new Vector2(config.intrinsics.width, config.intrinsics.height);
+            cam.focalLength = config.intrinsics.fy;
+
+            cam.aspect = (float)config.intrinsics.width / (float)config.intrinsics.height;
+            Screen.SetResolution(config.intrinsics.width, config.intrinsics.height, false);
+
             float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
             Debug.Log($"Setting FOV to {fov}");
             cam.fieldOfView = fov;
@@ -770,11 +787,18 @@ public class SynthesEyesServer : MonoBehaviour{
     {
         if (!string.IsNullOrEmpty(newPath))
         {
-            Debug.Log($"Setting output path to: {newPath}");
-            // Create the full output path
-            string outputFolder = Path.Combine(newPath, "EER_eye_data");
-            EnsureDirectoryExists(outputFolder);
-            Debug.Log($"Created output directory at: {outputFolder}");
+            // Combine the base path with the user-specified folder name.
+            string combinedPath = Path.Combine(newPath, outputFolderName);
+            Debug.Log($"Setting output path to: {combinedPath}");
+            outputPath = combinedPath;
+            // EnsureDirectoryExists(combinedPath);
+        }
+        else
+        {
+            Debug.LogWarning("No output path provided; using persistentDataPath fallback.");
+            string fallbackPath = Path.Combine(Application.persistentDataPath, "imgs");
+            outputPath = fallbackPath;
+            // EnsureDirectoryExists(fallbackPath);
         }
     }
 
@@ -841,11 +865,16 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
     private void SwitchCamera(int direction) {
+        if (cameraList == null || cameraList.Count == 0) {
+            Debug.LogWarning("No cameras available to switch.");
+            return;
+        }
         cameraList[currentCameraIndex].enabled = false;
-        
+            
         currentCameraIndex = (currentCameraIndex + direction) % cameraList.Count;
-        if (currentCameraIndex < 0) currentCameraIndex = cameraList.Count - 1;
-        
+        if (currentCameraIndex < 0)
+            currentCameraIndex = cameraList.Count - 1;
+            
         cameraList[currentCameraIndex].enabled = true;
         cameraList[currentCameraIndex].tag = "MainCamera";
     }
@@ -885,20 +914,12 @@ public class SynthesEyesServer : MonoBehaviour{
         }
 
         framesSaved++;
-
         int originalCameraIndex = currentCameraIndex;
 
-        string outputPath = "EER_eye_data";
-        if (File.Exists(jsonConfigPath))
+        if (string.IsNullOrEmpty(outputPath))
         {
-            string jsonData = File.ReadAllText(jsonConfigPath);
-            JSONNode rootNode = JSON.Parse(jsonData);
-            if (rootNode["outputPath"] != null)
-            {
-                string configOutputPath = rootNode["outputPath"];
-                outputPath = Path.Combine(configOutputPath, "EER_eye_data");
-                EnsureDirectoryExists(outputPath);
-            }
+            outputPath = Path.Combine(Application.persistentDataPath, "imgs");
+            // EnsureDirectoryExists(outputPath);
         }
 
         for (int i = 0; i < cameraList.Count; i++)
@@ -929,14 +950,14 @@ public class SynthesEyesServer : MonoBehaviour{
             RenderTexture.active = null;
 
             byte[] imgBytes = tex.EncodeToJPG();
-            string fileName = Path.Combine(outputPath, string.Format("{0}_{1}.jpg", framesSaved, cameraName));
+            string fileName = Path.Combine(outputPath, $"{framesSaved}_{cameraName}.jpg");
             File.WriteAllBytes(fileName, imgBytes);
 
             RenderTexture.ReleaseTemporary(renderTexture);
             Object.Destroy(tex);
         }
 
-        saveAllCamerasDetails(framesSaved, outputPath);
+        saveAllCamerasDetails(framesSaved);
 
         SwitchCamera(originalCameraIndex - currentCameraIndex);
     }
@@ -1027,7 +1048,7 @@ public class SynthesEyesServer : MonoBehaviour{
      * from all cameras and stores the ground truth gaze vector and poses. Also logs eyeball and lighting details.
      * Useful for creating labeled datasets for training or evaluation.
      */
-    private void saveAllCamerasDetails(int frame, string outputPath = "imgs")
+    private void saveAllCamerasDetails(int frame)
     {
         JSONNode rootNode = new JSONClass();
 
@@ -1078,7 +1099,7 @@ public class SynthesEyesServer : MonoBehaviour{
             cameraNode.Add("ground_truth", eyeball.GetGazeVector(cam));
         }
 
-        string filePath = Path.Combine(outputPath, string.Format("{0}.json", frame));
+        string filePath = Path.Combine(outputPath, $"{frame}.json");
         File.WriteAllText(filePath, rootNode.ToJSON(0));
     }
 }

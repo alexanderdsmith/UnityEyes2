@@ -89,31 +89,36 @@ public class MenuControllerUploadJSON : MonoBehaviour
      */
     private void OnUploadJsonClicked()
     {
-#if UNITY_STANDALONE || UNITY_EDITOR
-            string[] paths = StandaloneFileBrowser.OpenFilePanel("Select JSON Config", "", "json", false);
-            if (paths.Length > 0 && File.Exists(paths[0]))
+        string selectedPath = "";
+
+        #if UNITY_EDITOR
+            selectedPath = UnityEditor.EditorUtility.OpenFilePanel("Select JSON Config", "", "json");
+        #elif UNITY_STANDALONE_OSX
+            selectedPath = MacNativeFileBrowser.OpenFilePanel("Select JSON Config", "", "json", false);
+        #else
+            string[] paths = SFB.StandaloneFileBrowser.OpenFilePanel("Select JSON Config", "", "json", false);
+            if (paths.Length > 0)
+                selectedPath = paths[0];
+        #endif
+
+        if (!string.IsNullOrEmpty(selectedPath) && File.Exists(selectedPath))
+        {
+            Debug.Log("Selected JSON path: " + selectedPath);
+            string fileContent = File.ReadAllText(selectedPath);
+            JSONNode configData = JSON.Parse(fileContent);
+
+            if (configData == null)
             {
-                string selectedPath = paths[0];
-                Debug.Log("Selected JSON path: " + selectedPath);
-
-                string fileContent = File.ReadAllText(selectedPath);
-                JSONNode configData = JSON.Parse(fileContent);
-
-                if (configData == null)
-                {
-                    Debug.LogError("Failed to parse JSON file: " + selectedPath);
-                    return;
-                }
-
-                ApplyConfiguration(configData);
+                Debug.LogError("Failed to parse JSON file: " + selectedPath);
+                return;
             }
-            else
-            {
-                Debug.LogWarning("No file selected or file doesn't exist.");
-            }
-#else
-        Debug.LogWarning("File picker not supported on this platform.");
-#endif
+
+            ApplyConfiguration(configData);
+        }
+        else
+        {
+            Debug.LogWarning("No file selected or file doesn't exist.");
+        }
     }
 
 
@@ -152,8 +157,15 @@ public class MenuControllerUploadJSON : MonoBehaviour
     {
         if (configData["outputPath"] != null && menuController.outputPathTMP != null)
         {
-            menuController.outputPathTMP.text = configData["outputPath"];
-            menuController.OnOutputPathChanged(configData["outputPath"]);
+            string outputPath = configData["outputPath"];
+            // Expand '~' if needed
+            if (outputPath.StartsWith("~"))
+            {
+                string remainder = outputPath.Substring(1).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                outputPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), remainder);
+            }
+            menuController.outputPathTMP.text = outputPath;
+            menuController.OnOutputPathChanged(outputPath);
         }
 
 
