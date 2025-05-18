@@ -2100,22 +2100,22 @@ public class MenuController : MonoBehaviour
         }
     }
     // Helper method to test writability of a directory
-        private bool IsDirectoryWritable(string path)
+    private bool IsDirectoryWritable(string path)
+    {
+        try
         {
-            try
+            // Attempt to create and then delete a temporary file
+            string testFile = Path.Combine(path, Path.GetRandomFileName());
+            using (FileStream fs = File.Create(testFile, 1, FileOptions.DeleteOnClose))
             {
-                // Attempt to create and then delete a temporary file
-                string testFile = Path.Combine(path, Path.GetRandomFileName());
-                using (FileStream fs = File.Create(testFile, 1, FileOptions.DeleteOnClose))
-                {
-                }
-                return true;
             }
-            catch
-            {
-                return false;
-            }
+            return true;
         }
+        catch
+        {
+            return false;
+        }
+    }
 
     private TMP_InputField FindInputField(Transform parent, string name)
     {

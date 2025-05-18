@@ -375,7 +375,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraExtrinsicsRotationNoise.Add(extrinsicsRotationNoise);
 
                 JSONNode intrinsics = camNode["intrinsics"];
-                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
+                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool; // is this still needed?
 
                 // Set default values
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
@@ -648,28 +648,58 @@ public class SynthesEyesServer : MonoBehaviour{
         else
         {
             cam.usePhysicalProperties = true;
-            // lens shift
-
             cam.lensShift = new Vector2(
-                (config.intrinsics.cx - config.intrinsics.width / 2) / config.intrinsics.width,
-                (config.intrinsics.cy - config.intrinsics.height / 2) / config.intrinsics.height
+                (config.intrinsics.cx - config.intrinsics.width / 2f) / config.intrinsics.width,
+                (config.intrinsics.cy - config.intrinsics.height / 2f) / config.intrinsics.height
             );
-
-            // physical properties
             cam.sensorSize = new Vector2(config.intrinsics.width, config.intrinsics.height);
-            cam.focalLength = config.intrinsics.fy;
 
-            cam.aspect = (float)config.intrinsics.width / (float)config.intrinsics.height;
-            Screen.SetResolution(config.intrinsics.width, config.intrinsics.height, false);
+            float near = cam.nearClipPlane;
+            float far = cam.farClipPlane;
 
-            float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
-            Debug.Log($"Setting FOV to {fov}");
-            cam.fieldOfView = fov;
+            float left = -config.intrinsics.cx * near / config.intrinsics.fx;
+            float right = (config.intrinsics.width - config.intrinsics.cx) * near / config.intrinsics.fx;
+            float bottom = - (config.intrinsics.height - config.intrinsics.cy) * near / config.intrinsics.fy;
+            float top = config.intrinsics.cy * near / config.intrinsics.fy;
+
+            cam.projectionMatrix = PerspectiveOffCenter(left, right, bottom, top, near, far);
+            
+            float fovY = 2f * Mathf.Atan((top - bottom) / (2 * near)) * Mathf.Rad2Deg;
+            float fovX = 2f * Mathf.Atan((right - left) / (2 * near)) * Mathf.Rad2Deg;
+            Debug.Log($"Computed fovY: {fovY}, fovX: {fovX}");
+            
+            cam.aspect = (config.intrinsics.width * config.intrinsics.fx) / (config.intrinsics.height * config.intrinsics.fy);
+            // Screen.SetResolution(config.intrinsics.width, config.intrinsics.height, false);
         }
 
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0.5f, 0.5f, 0.5f);
 
+    }
+
+    public static Matrix4x4 PerspectiveOffCenter(float left, float right, float bottom, float top, float near, float far)
+    {
+        Matrix4x4 m = new Matrix4x4();
+        m[0, 0] = 2f * near / (right - left);
+        m[0, 1] = 0f;
+        m[0, 2] = (right + left) / (right - left);
+        m[0, 3] = 0f;
+        
+        m[1, 0] = 0f;
+        m[1, 1] = 2f * near / (top - bottom);
+        m[1, 2] = (top + bottom) / (top - bottom);
+        m[1, 3] = 0f;
+        
+        m[2, 0] = 0f;
+        m[2, 1] = 0f;
+        m[2, 2] = -(far + near) / (far - near);
+        m[2, 3] = -2f * far * near / (far - near);
+        
+        m[3, 0] = 0f;
+        m[3, 1] = 0f;
+        m[3, 2] = -1f;
+        m[3, 3] = 0f;
+        return m;
     }
 
     private float GetRandomOffset(float range)
@@ -877,6 +907,14 @@ public class SynthesEyesServer : MonoBehaviour{
             
         cameraList[currentCameraIndex].enabled = true;
         cameraList[currentCameraIndex].tag = "MainCamera";
+
+        // set screen resolution to current camera
+        int width = cameraOriginalIntrinsics[currentCameraIndex].width;
+        int height = cameraOriginalIntrinsics[currentCameraIndex].height;
+        Screen.SetResolution(width, height, false);
+
+        Debug.Log($"Switched to camera {currentCameraIndex}: {cameraList[currentCameraIndex].name}");
+        Debug.Log($"Dimensions: {width} x {height}");
     }
 
     public void ToggleOutputPreview() {
@@ -931,9 +969,11 @@ public class SynthesEyesServer : MonoBehaviour{
 
             SwitchCamera(i - currentCameraIndex);
 
+            int width = cameraOriginalIntrinsics[i].width;
+            int height = cameraOriginalIntrinsics[i].height;
             RenderTexture renderTexture = RenderTexture.GetTemporary(
-                cam.pixelWidth,
-                cam.pixelHeight,
+                width,
+                height,
                 24,
                 RenderTextureFormat.ARGB32);
 
@@ -941,7 +981,7 @@ public class SynthesEyesServer : MonoBehaviour{
             cam.targetTexture = renderTexture;
             cam.Render();
 
-            Texture2D tex = new Texture2D(cam.pixelWidth, cam.pixelHeight, TextureFormat.RGB24, false);
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
             RenderTexture.active = renderTexture;
             tex.ReadPixels(new Rect(0, 0, cam.pixelWidth, cam.pixelHeight), 0, 0);
             tex.Apply();
@@ -998,6 +1038,20 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             Debug.LogError($"Config file not found at: {path}");
         }
+        UpdateMainCameraResolution();
+    }
+
+    public void UpdateMainCameraResolution()
+    {
+        if (cameraList == null || cameraList.Count == 0)
+        {
+            Debug.LogWarning("No cameras available for updating resolution.");
+            return;
+        }
+        int width = cameraOriginalIntrinsics[currentCameraIndex].width;
+        int height = cameraOriginalIntrinsics[currentCameraIndex].height;
+        Screen.SetResolution(width, height, false);
+        Debug.Log($"Main camera resolution set to: {width} x {height}");
     }
 
     private void CleanupCurrentScene()
