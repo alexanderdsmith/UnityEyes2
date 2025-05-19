@@ -1,5 +1,5 @@
 # UnityEyes2
-Greater camera control for the UnityEyes Package by Erroll Wood, enabling machine learning on specific hardware specifications for eye tracking
+Greater camera control for the UnityEyes Package by Erroll Wood, enabling machine learning on custom hardware specifications for eye tracking
 
 Updated by Alexander Smith and Brijesh Muthumanickam
 
@@ -9,8 +9,8 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 
 ## Hotkeys
     s: save image
-    c: randomize camera and eye parameters
-    r: randomize scene parameters
+    c: randomize camera and eye noise
+    r: randomize skin, iris, and pupil parameters
     l: randomize lighting parameters
     h: hide UI button overlays
     p: toggle preview mode

@@ -771,7 +771,7 @@ public class MenuController : MonoBehaviour
         cameraGroupValues[cameraId]["Intrinsics"] = new Dictionary<string, float>();
         cameraGroupValues[cameraId]["IntrinsicsNoise"] = new Dictionary<string, float>();
         cameraGroupValues[cameraId]["Extrinsics"] = new Dictionary<string, float>();
-        cameraGroupValues[cameraId]["ExtrinsicsNoise"] = new Dictionary<string, float>();
+        // cameraGroupValues[cameraId]["ExtrinsicsNoise"] = new Dictionary<string, float>();
 
         // Initialize Intrinsics and IntrinsicsNoise values
         foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
@@ -785,7 +785,7 @@ public class MenuController : MonoBehaviour
         }
 
         // Initialize Extrinsics and ExtrinsicsNoise values
-        foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
+        foreach (string group in new[] { "Extrinsics" })
         {
             cameraGroupValues[cameraId][group]["x"] = 0f;
             cameraGroupValues[cameraId][group]["y"] = 0f;
@@ -801,7 +801,7 @@ public class MenuController : MonoBehaviour
         cameraInputFields[cameraId]["Intrinsics"] = new InputFieldRefs();
         cameraInputFields[cameraId]["IntrinsicsNoise"] = new InputFieldRefs();
         cameraInputFields[cameraId]["Extrinsics"] = new InputFieldRefs();
-        cameraInputFields[cameraId]["ExtrinsicsNoise"] = new InputFieldRefs();
+        // cameraInputFields[cameraId]["ExtrinsicsNoise"] = new InputFieldRefs();
 
         TMP_InputField[] inputFields = cameraGroup.GetComponentsInChildren<TMP_InputField>(true);
 
@@ -863,8 +863,8 @@ public class MenuController : MonoBehaviour
                 return "IntrinsicsNoise";
             if (parent.name.Contains("Extrinsics") && !parent.name.Contains("Noise"))
                 return "Extrinsics";
-            if (parent.name.Contains("ExtrinsicsNoise"))
-                return "ExtrinsicsNoise";
+            // if (parent.name.Contains("ExtrinsicsNoise"))
+            //     return "ExtrinsicsNoise";
 
             parent = parent.parent;
         }
@@ -1855,7 +1855,7 @@ public class MenuController : MonoBehaviour
 
             JSONNode cameraNode = new JSONClass();
             cameraNode.Add("name", new JSONData($"cam{i - 1}"));
-            cameraNode.Add("noise_distribution", new JSONData("uniform"));
+            cameraNode.Add("noise_distribution", new JSONData("uniform")); // TODO: should not be default.
 
             var cameraValues = cameraGroupValues[i];
 
@@ -1898,18 +1898,18 @@ public class MenuController : MonoBehaviour
             }
             cameraNode.Add("extrinsics", extrinsicsNode);
 
-            JSONNode extrinsicsNoiseNode = new JSONClass();
-            if (cameraValues.ContainsKey("ExtrinsicsNoise"))
-            {
-                var extrinsicsNoise = cameraValues["ExtrinsicsNoise"];
-                extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
-                extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
-                extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
-                extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
-                extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
-                extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
-            }
-            cameraNode.Add("extrinsics_noise", extrinsicsNoiseNode);
+            // JSONNode extrinsicsNoiseNode = new JSONClass();
+            // if (cameraValues.ContainsKey("ExtrinsicsNoise"))
+            // {
+            //     var extrinsicsNoise = cameraValues["ExtrinsicsNoise"];
+            //     extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
+            //     extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
+            //     extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
+            //     extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
+            //     extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
+            //     extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
+            // }
+            // cameraNode.Add("extrinsics_noise", extrinsicsNoiseNode);
 
             camerasArray.Add(cameraNode);
         }
@@ -1923,6 +1923,7 @@ public class MenuController : MonoBehaviour
             if (!lightGroupValues.ContainsKey(i))
                 continue;
 
+            // TODO: Make sure all functionality is present for lights. Default values cannot be used here.
             JSONNode lightNode = new JSONClass();
             lightNode.Add("name", new JSONData($"point_light_{i}"));
             lightNode.Add("type", new JSONData("point"));
@@ -1938,9 +1939,9 @@ public class MenuController : MonoBehaviour
                 extrinsicsNode.Add("x", new JSONData(extrinsics.ContainsKey("x") ? extrinsics["x"] : 0f));
                 extrinsicsNode.Add("y", new JSONData(extrinsics.ContainsKey("y") ? extrinsics["y"] : 0f));
                 extrinsicsNode.Add("z", new JSONData(extrinsics.ContainsKey("z") ? extrinsics["z"] : 0f));
-                extrinsicsNode.Add("rx", new JSONData(extrinsics.ContainsKey("rx") ? extrinsics["rx"] : 0f));
-                extrinsicsNode.Add("ry", new JSONData(extrinsics.ContainsKey("ry") ? extrinsics["ry"] : 0f));
-                extrinsicsNode.Add("rz", new JSONData(extrinsics.ContainsKey("rz") ? extrinsics["rz"] : 0f));
+                // extrinsicsNode.Add("rx", new JSONData(extrinsics.ContainsKey("rx") ? extrinsics["rx"] : 0f));
+                // extrinsicsNode.Add("ry", new JSONData(extrinsics.ContainsKey("ry") ? extrinsics["ry"] : 0f));
+                // extrinsicsNode.Add("rz", new JSONData(extrinsics.ContainsKey("rz") ? extrinsics["rz"] : 0f));
             }
             lightNode.Add("position", extrinsicsNode);
 
@@ -1948,14 +1949,14 @@ public class MenuController : MonoBehaviour
             if (lightValues.ContainsKey("PositionNoiseGroup"))
             {
                 var extrinsicsNoise = lightValues["PositionNoiseGroup"];
-                extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
-                extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
-                extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
-                extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
-                extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
-                extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
+                // extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
+                // extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
+                // extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
+                // extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
+                // extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
+                // extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
             }
-            lightNode.Add("position_noise", extrinsicsNoiseNode);
+            // lightNode.Add("position_noise", extrinsicsNoiseNode); // TODO: determine logic for this
 
             JSONNode propertiesNode = new JSONClass();
             if (lightGroupValues[i].ContainsKey("Properties"))
@@ -1977,10 +1978,10 @@ public class MenuController : MonoBehaviour
                 colorNode.Add("b", new JSONData(b));
                 propertiesNode.Add("color", colorNode);
 
-                propertiesNode.Add("shadows", new JSONData("soft"));
+                // propertiesNode.Add("shadows", new JSONData("soft"));
 
-                float shadowBias = properties.ContainsKey("shadow_bias") ? properties["shadow_bias"] : 0.05f;
-                propertiesNode.Add("shadow_bias", new JSONData(shadowBias));
+                // float shadowBias = properties.ContainsKey("shadow_bias") ? properties["shadow_bias"] : 0.05f;
+                // propertiesNode.Add("shadow_bias", new JSONData(shadowBias));
             }
             else
             {
@@ -1993,14 +1994,16 @@ public class MenuController : MonoBehaviour
                 colorNode.Add("b", new JSONData(1.0f));
                 propertiesNode.Add("color", colorNode);
 
-                propertiesNode.Add("shadows", new JSONData("soft"));
-                propertiesNode.Add("shadow_bias", new JSONData(0.05f));
+                // propertiesNode.Add("shadows", new JSONData("soft"));
+                // propertiesNode.Add("shadow_bias", new JSONData(0.05f));
             }
             lightNode.Add("properties", propertiesNode);
             lightsArray.Add(lightNode);
         }
 
         JSONNode eyeParametersNode = new JSONClass();
+
+        // TODO: Make all of these default values below into dynamic variables.
 
         JSONNode pupilSizeRangeNode = new JSONClass();
         if (eyeParameterValues.ContainsKey("PupilSize"))

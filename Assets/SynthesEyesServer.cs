@@ -374,7 +374,13 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraExtrinsicsPositionNoise.Add(extrinsicsPositionNoise);
                 cameraExtrinsicsRotationNoise.Add(extrinsicsRotationNoise);
 
+                // TODO: setting up this camera is done incorrectly. Use focalLength, principalPoint
+                // and resolution from Unity to set these values.
+                // use Gate Fit
+
                 JSONNode intrinsics = camNode["intrinsics"];
+                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
+
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool; // is this still needed?
 
                 // Set default values
@@ -390,6 +396,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
                 if (intrinsics != null)
                 {
+                    // TODO: these need to be calculated for 
                     if (intrinsics["fx"] != null) camIntrinsics.fx = intrinsics["fx"].AsFloat;
                     if (intrinsics["fy"] != null) camIntrinsics.fy = intrinsics["fy"].AsFloat;
                     if (intrinsics["cx"] != null) camIntrinsics.cx = intrinsics["cx"].AsFloat;
@@ -853,7 +860,9 @@ public class SynthesEyesServer : MonoBehaviour{
 
         if (isSavingData || Input.GetKey("c"))
         {
+            ToggleOutputPreview();
             RandomizeScene();
+            ToggleOutputPreview();
         }
 
         if (Input.GetKeyDown("p"))
@@ -863,8 +872,10 @@ public class SynthesEyesServer : MonoBehaviour{
 
         if (isSavingData || Input.GetKey("r"))
         {
+            ToggleOutputPreview();
             eyeRegion.RandomizeAppearance();
             eyeball.RandomizeEyeball();
+            ToggleOutputPreview();
         }
 
         if (isSavingData || Input.GetKey("l"))
