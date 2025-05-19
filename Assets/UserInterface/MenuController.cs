@@ -67,7 +67,6 @@ public class MenuController : MonoBehaviour
     // ---------------------------------------------------------
     [Header("Help")]
     [SerializeField] private Button helpButton;
-    [SerializeField] private GameObject helpPopup;
 
     private int cameraCount = 0;
 
@@ -231,6 +230,7 @@ public class MenuController : MonoBehaviour
         addLightButton = GameObject.Find("AddLight").GetComponent<Button>();
         removeLightButton = GameObject.Find("RemoveLight").GetComponent<Button>();
         saveButton = GameObject.Find("SaveButton").GetComponent<Button>();
+        helpButton = GameObject.Find("HelpButton").GetComponent<Button>();
 
         motionCenterToggle = GameObject.Find("MotionCenterToggle").GetComponent<Toggle>();
         motionCenterGroup = GameObject.Find("MotionCenter");
@@ -238,9 +238,6 @@ public class MenuController : MonoBehaviour
         cameraArrayCenterNoiseGroup = GameObject.Find("CameraArrayCenterNoiseGroup").GetComponent<RectTransform>();
 
         eyeParamGroup = GameObject.Find("EyeParamGroup");
-
-
-
 
         numSamplesField = GameObject.Find("SampleCount").GetComponent<TMP_InputField>();
         outputPathTMP = GameObject.Find("OutputPathTMP")?.GetComponent<TMP_Text>();
@@ -332,6 +329,11 @@ public class MenuController : MonoBehaviour
         if (saveButton != null)
         {
             saveButton.onClick.AddListener(SaveConfiguration);
+        }
+
+        if (helpButton != null)
+        {
+            helpButton.onClick.AddListener(OpenHelpUrl);
         }
 
         if (synthesEyesServer == null)
@@ -561,6 +563,12 @@ public class MenuController : MonoBehaviour
     {
         isMenuOpen = false;
         settingsMenu.SetActive(false);
+    }
+
+    public void OpenHelpUrl()
+    {
+        Application.OpenURL("https://github.com/alexanderdsmith/UnityEyes2/blob/main/README.md");
+        Debug.Log("Opening help URL");
     }
 
     private void InitializeMotionCenterValues()

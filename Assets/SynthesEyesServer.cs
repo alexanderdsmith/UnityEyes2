@@ -374,14 +374,8 @@ public class SynthesEyesServer : MonoBehaviour{
                 cameraExtrinsicsPositionNoise.Add(extrinsicsPositionNoise);
                 cameraExtrinsicsRotationNoise.Add(extrinsicsRotationNoise);
 
-                // TODO: setting up this camera is done incorrectly. Use focalLength, principalPoint
-                // and resolution from Unity to set these values.
-                // use Gate Fit
-
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
-
-                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool; // is this still needed?
 
                 // Set default values
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
