@@ -5,6 +5,12 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 
 (c) 2025, University of Illinois at Urbana-Champaign
 
+# Package Releases
+Please select the version below for your operating system:
+[**Windows**]()
+[**Linux**]() *Note: tested on Ubuntu 22.04 LTS*
+[**MacOS:**](https://uofi.box.com/s/41sv64x2dbrww1r09ofwj0d3ynyj838m) *Note: tested on M3 Max Apple Silicon Chip*
+
 # How to use UnityEyes 2
 
 ## Hotkeys
