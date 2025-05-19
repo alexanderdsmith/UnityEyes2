@@ -40,7 +40,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpTex:
-        m_Texture: {fileID: 2800000, guid: fce94a80104ad80409633a765484839e, type: 3}
+        m_Texture: {fileID: 2800000, guid: 0f0f2d9a9636097488a22ba41c8eb840, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpTexDetail:
@@ -284,11 +284,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex2dColor:
-        m_Texture: {fileID: 2800000, guid: f2ef640ab7c6c85408e86453fc0d13be, type: 3}
+        m_Texture: {fileID: 2800000, guid: 39db7fb2fd32dd6449f6d0c370f6a788, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex2dColorLd:
-        m_Texture: {fileID: 2800000, guid: d4b636f0a238fb44cb575cf918444435, type: 3}
+        m_Texture: {fileID: 2800000, guid: d1a195459e0f85a45a6939c87e081d1d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex3dBump:

@@ -16,8 +16,6 @@ public class CameraIntrinsics{
     public float cy;
     public int width;
     public int height;
-    public float sensor_width;
-    public float sensor_height;
 }
 
 [System.Serializable]
@@ -83,6 +81,9 @@ public class SynthesEyesServer : MonoBehaviour{
     private int currentCameraIndex = 0;
     public string jsonConfigPath = "camera_config.json";
 
+    private string outputPath;
+    public string outputFolderName = "imgs";
+
     private int maxSamplesToSave = 10000;
 
     // Motion Center Feature
@@ -109,8 +110,6 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private EyeParameters eyeParameters;
 
-    private bool headlessMode = false;
-
     public bool isSavingData = false;
 
 	private Mesh eyemesh;
@@ -122,9 +121,14 @@ public class SynthesEyesServer : MonoBehaviour{
 
     private EyeVisualizationManager visualizationManager;
 
+    /**
+     * Initialize the SynthesEyes scene and camera configuration.
+     *
+     * Loads camera and lighting setup from a JSON configuration file, sets up component references,
+     * and applies eye parameters like pupil and iris size.
+     */
     void Start()
     {
-        EnsureDirectoryExists("imgs");
         eyeRegion = eyeRegionObj.GetComponent<EyeRegionController>();
         eyeball = eyeballObj.GetComponent<EyeballController>();
         eyeRegionSubdiv = eyeRegionSubdivObj.GetComponent<SubdivMesh>();
@@ -149,12 +153,30 @@ public class SynthesEyesServer : MonoBehaviour{
 
             if (eyeParameters != null)
             {
+                Debug.Log($"[Eye Parameters Loaded]");
+                Debug.Log($"  Pupil Size Range: min={eyeParameters.pupilSizeRange.x}, max={eyeParameters.pupilSizeRange.y}");
+                Debug.Log($"  Iris Size Range: min={eyeParameters.irisSizeRange.x}, max={eyeParameters.irisSizeRange.y}");
+                Debug.Log($"  Default Yaw: {eyeParameters.defaultYaw}");
+                Debug.Log($"  Default Pitch: {eyeParameters.defaultPitch}");
+                Debug.Log($"  Yaw Noise: {eyeParameters.yawNoise}");
+                Debug.Log($"  Pitch Noise: {eyeParameters.pitchNoise}");
+
                 eyeball.SetPupilSizeRange(eyeParameters.pupilSizeRange);
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
             }
         }
     }
 
+
+    /**
+     * Load camera configuration from a JSON file.
+     *
+     * @param {string} configPath - Path to the JSON configuration file.
+     * 
+     * Reads camera intrinsics and extrinsics, motion center settings, and initializes camera GameObjects.
+     * Applies appropriate transformations and noise for realistic variability.
+     * @throws {Exception} If the JSON parsing or object setup fails.
+     */
     private void LoadCamerasFromConfig(string configPath)
     {
         cameraList.Clear();
@@ -248,12 +270,6 @@ public class SynthesEyesServer : MonoBehaviour{
                 );
                 Debug.Log("Camera array center noise: " + cameraArrayPositionNoise);
                 Debug.Log("Camera array rotation noise: " + cameraArrayRotationNoise);
-            }
-
-            if (rootNode["headless_mode"] != null)
-            {
-                headlessMode = rootNode["headless_mode"].AsInt == 1;
-                Debug.Log($"Headless mode: {headlessMode}");
             }
 
             if (rootNode["eye_parameters"] != null)
@@ -365,6 +381,7 @@ public class SynthesEyesServer : MonoBehaviour{
                 JSONNode intrinsics = camNode["intrinsics"];
                 bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool;
 
+                bool isOrthographic = camNode["is_orthographic"] != null && camNode["is_orthographic"].AsBool; // is this still needed?
 
                 // Set default values
                 CameraIntrinsics camIntrinsics = new CameraIntrinsics
@@ -386,12 +403,6 @@ public class SynthesEyesServer : MonoBehaviour{
                     if (intrinsics["cy"] != null) camIntrinsics.cy = intrinsics["cy"].AsFloat;
                     if (intrinsics["w"] != null) camIntrinsics.width = intrinsics["w"].AsInt;
                     if (intrinsics["h"] != null) camIntrinsics.height = intrinsics["h"].AsInt;
-
-                    if (intrinsics["sensor_width"] != null) camIntrinsics.sensor_width = intrinsics["sensor_width"].AsFloat;
-                    else camIntrinsics.sensor_width = 1.6f;
-
-                    if (intrinsics["sensor_height"] != null) camIntrinsics.sensor_height = intrinsics["sensor_height"].AsFloat;
-                    else camIntrinsics.sensor_height = 1.2f;
                 }
 
                 CameraConfig config = new CameraConfig
@@ -411,8 +422,6 @@ public class SynthesEyesServer : MonoBehaviour{
                     cy = camIntrinsics.cy,
                     width = camIntrinsics.width,
                     height = camIntrinsics.height,
-                    sensor_width = camIntrinsics.sensor_width,
-                    sensor_height = camIntrinsics.sensor_height
                 });
 
                 ConfigureCameraFromIntrinsics(newCam, config);
@@ -626,10 +635,17 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Randomizes camera and light positions and orientations.
+     *
+     * Applies motion noise to camera parent transform or individual cameras depending on motion center setting.
+     * Also randomizes eyeball rotation within a specified noise range.
+     */
     private void ConfigureCameraFromIntrinsics(Camera cam, CameraConfig config)
     {
         cam.orthographic = config.is_orthographic;
-        cam.nearClipPlane = 0.3f; 
+        cam.nearClipPlane = 0.1f; 
         cam.farClipPlane = 1000f;
 
         if (config.is_orthographic)
@@ -638,35 +654,59 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         else
         {
-            // sizeX = config.intrinxics.fx * width / ax;
-            // sizeY = config.intrinsics.fy * height / ay;
+            cam.usePhysicalProperties = true;
+            cam.lensShift = new Vector2(
+                (config.intrinsics.cx - config.intrinsics.width / 2f) / config.intrinsics.width,
+                (config.intrinsics.cy - config.intrinsics.height / 2f) / config.intrinsics.height
+            );
+            cam.sensorSize = new Vector2(config.intrinsics.width, config.intrinsics.height);
 
-            // //PlayerSettings.defaultScreenWidth = width;
-            // //PlayerSettings.defaultScreenHeight = height;
+            float near = cam.nearClipPlane;
+            float far = cam.farClipPlane;
 
-            // shiftX = -(x0 - width / 2.0f) / width;
-            // shiftY = (y0 - height / 2.0f) / height;
+            float left = -config.intrinsics.cx * near / config.intrinsics.fx;
+            float right = (config.intrinsics.width - config.intrinsics.cx) * near / config.intrinsics.fx;
+            float bottom = - (config.intrinsics.height - config.intrinsics.cy) * near / config.intrinsics.fy;
+            float top = config.intrinsics.cy * near / config.intrinsics.fy;
 
-            // mainCamera.sensorSize = new Vector2(sizeX, sizeY);     // in mm, mx = 1000/x, my = 1000/y
-            // mainCamera.focalLength = f;                            // in mm, ax = f * mx, ay = f * my
-            // mainCamera.lensShift = new Vector2(shiftX, shiftY);
-
-            // TODO: Why was this set up this way? This desperately needs to be resolved.
-            // TODO: might need projection matrix to be modified to set the correct FOV
-            float fov = 2 * Mathf.Atan(config.intrinsics.height / (2 * config.intrinsics.fy)) * Mathf.Rad2Deg;
-            Debug.Log($"Setting FOV to {fov}");
-            cam.fieldOfView = fov;
-
-            // cam.principalPoint = new Vector2(config.intrinsics.cx, config.intrinsics.cy);
-
-            // TODO: evaluate in terms of different focal lengths.
-            cam.aspect = (float)config.intrinsics.width / (float)config.intrinsics.height;
-
+            cam.projectionMatrix = PerspectiveOffCenter(left, right, bottom, top, near, far);
+            
+            float fovY = 2f * Mathf.Atan((top - bottom) / (2 * near)) * Mathf.Rad2Deg;
+            float fovX = 2f * Mathf.Atan((right - left) / (2 * near)) * Mathf.Rad2Deg;
+            Debug.Log($"Computed fovY: {fovY}, fovX: {fovX}");
+            
+            cam.aspect = (config.intrinsics.width * config.intrinsics.fx) / (config.intrinsics.height * config.intrinsics.fy);
+            // Screen.SetResolution(config.intrinsics.width, config.intrinsics.height, false);
         }
 
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0.5f, 0.5f, 0.5f);
 
+    }
+
+    public static Matrix4x4 PerspectiveOffCenter(float left, float right, float bottom, float top, float near, float far)
+    {
+        Matrix4x4 m = new Matrix4x4();
+        m[0, 0] = 2f * near / (right - left);
+        m[0, 1] = 0f;
+        m[0, 2] = (right + left) / (right - left);
+        m[0, 3] = 0f;
+        
+        m[1, 0] = 0f;
+        m[1, 1] = 2f * near / (top - bottom);
+        m[1, 2] = (top + bottom) / (top - bottom);
+        m[1, 3] = 0f;
+        
+        m[2, 0] = 0f;
+        m[2, 1] = 0f;
+        m[2, 2] = -(far + near) / (far - near);
+        m[2, 3] = -2f * far * near / (far - near);
+        
+        m[3, 0] = 0f;
+        m[3, 1] = 0f;
+        m[3, 2] = -1f;
+        m[3, 3] = 0f;
+        return m;
     }
 
     private float GetRandomOffset(float range)
@@ -687,8 +727,13 @@ public class SynthesEyesServer : MonoBehaviour{
         }
         randomizeSceneCallCount++;
 
-        float randomYaw = Random.Range(-eyeYawNoise, eyeYawNoise) + defaultEyeYaw;
-        float randomPitch = Random.Range(-eyePitchNoise, eyePitchNoise) + defaultEyePitch;
+        float yawNoise = (eyeParameters != null) ? eyeParameters.yawNoise : eyeYawNoise;
+        float pitchNoise = (eyeParameters != null) ? eyeParameters.pitchNoise : eyePitchNoise;
+        float defaultYaw = (eyeParameters != null) ? eyeParameters.defaultYaw : defaultEyeYaw;
+        float defaultPitch = (eyeParameters != null) ? eyeParameters.defaultPitch : defaultEyePitch;
+
+        float randomYaw = Random.Range(-yawNoise, yawNoise) + defaultYaw;
+        float randomPitch = Random.Range(-pitchNoise, pitchNoise) + defaultPitch;
 
         eyeball.SetEyeRotation(randomYaw, randomPitch);
 
@@ -767,6 +812,41 @@ public class SynthesEyesServer : MonoBehaviour{
         }
     }
 
+
+    /**
+     * Update the file system path where output images and metadata will be saved.
+     *
+     * @param {string} newPath - New directory path for output data.
+     *
+     * Ensures the directory exists and logs the update.
+     */
+    public void UpdateOutputPath(string newPath)
+    {
+        if (!string.IsNullOrEmpty(newPath))
+        {
+            // Combine the base path with the user-specified folder name.
+            string combinedPath = Path.Combine(newPath, outputFolderName);
+            Debug.Log($"Setting output path to: {combinedPath}");
+            outputPath = combinedPath;
+            // EnsureDirectoryExists(combinedPath);
+        }
+        else
+        {
+            Debug.LogWarning("No output path provided; using persistentDataPath fallback.");
+            string fallbackPath = Path.Combine(Application.persistentDataPath, "imgs");
+            outputPath = fallbackPath;
+            // EnsureDirectoryExists(fallbackPath);
+        }
+    }
+
+
+    /**
+     * Save frame data from all cameras including rendered images and ground truth metadata.
+     *
+     * @returns {IEnumerator} Used as a coroutine to yield after rendering.
+     *
+     * Saves an image and JSON metadata for each camera and handles frame count limits.
+     */
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.RightArrow))
@@ -826,13 +906,26 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
     private void SwitchCamera(int direction) {
+        if (cameraList == null || cameraList.Count == 0) {
+            Debug.LogWarning("No cameras available to switch.");
+            return;
+        }
         cameraList[currentCameraIndex].enabled = false;
-        
+            
         currentCameraIndex = (currentCameraIndex + direction) % cameraList.Count;
-        if (currentCameraIndex < 0) currentCameraIndex = cameraList.Count - 1;
-        
+        if (currentCameraIndex < 0)
+            currentCameraIndex = cameraList.Count - 1;
+            
         cameraList[currentCameraIndex].enabled = true;
         cameraList[currentCameraIndex].tag = "MainCamera";
+
+        // set screen resolution to current camera
+        int width = cameraOriginalIntrinsics[currentCameraIndex].width;
+        int height = cameraOriginalIntrinsics[currentCameraIndex].height;
+        Screen.SetResolution(width, height, false);
+
+        Debug.Log($"Switched to camera {currentCameraIndex}: {cameraList[currentCameraIndex].name}");
+        Debug.Log($"Dimensions: {width} x {height}");
     }
 
     public void ToggleOutputPreview() {
@@ -870,13 +963,13 @@ public class SynthesEyesServer : MonoBehaviour{
         }
 
         framesSaved++;
-
-        if (!headlessMode)
-        {
-            yield return new WaitForEndOfFrame();
-        }
-
         int originalCameraIndex = currentCameraIndex;
+
+        if (string.IsNullOrEmpty(outputPath))
+        {
+            outputPath = Path.Combine(Application.persistentDataPath, "imgs");
+            // EnsureDirectoryExists(outputPath);
+        }
 
         for (int i = 0; i < cameraList.Count; i++)
         {
@@ -885,15 +978,13 @@ public class SynthesEyesServer : MonoBehaviour{
 
             Debug.Log(cameraName + " frame: " + framesSaved);
 
-            if (!headlessMode)
-            {
-                SwitchCamera(i - currentCameraIndex);
-                yield return new WaitForEndOfFrame();
-            }
+            SwitchCamera(i - currentCameraIndex);
 
+            int width = cameraOriginalIntrinsics[i].width;
+            int height = cameraOriginalIntrinsics[i].height;
             RenderTexture renderTexture = RenderTexture.GetTemporary(
-                cam.pixelWidth,
-                cam.pixelHeight,
+                width,
+                height,
                 24,
                 RenderTextureFormat.ARGB32);
 
@@ -901,7 +992,7 @@ public class SynthesEyesServer : MonoBehaviour{
             cam.targetTexture = renderTexture;
             cam.Render();
 
-            Texture2D tex = new Texture2D(cam.pixelWidth, cam.pixelHeight, TextureFormat.RGB24, false);
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
             RenderTexture.active = renderTexture;
             tex.ReadPixels(new Rect(0, 0, cam.pixelWidth, cam.pixelHeight), 0, 0);
             tex.Apply();
@@ -910,7 +1001,7 @@ public class SynthesEyesServer : MonoBehaviour{
             RenderTexture.active = null;
 
             byte[] imgBytes = tex.EncodeToJPG();
-            string fileName = string.Format("imgs/{0}_{1}.jpg", framesSaved, cameraName);
+            string fileName = Path.Combine(outputPath, $"{framesSaved}_{cameraName}.jpg");
             File.WriteAllBytes(fileName, imgBytes);
 
             RenderTexture.ReleaseTemporary(renderTexture);
@@ -919,10 +1010,7 @@ public class SynthesEyesServer : MonoBehaviour{
 
         saveAllCamerasDetails(framesSaved);
 
-        if (!headlessMode)
-        {
-            SwitchCamera(originalCameraIndex - currentCameraIndex);
-        }
+        SwitchCamera(originalCameraIndex - currentCameraIndex);
     }
 
     public void ResetFrameCounter()
@@ -961,6 +1049,20 @@ public class SynthesEyesServer : MonoBehaviour{
         {
             Debug.LogError($"Config file not found at: {path}");
         }
+        UpdateMainCameraResolution();
+    }
+
+    public void UpdateMainCameraResolution()
+    {
+        if (cameraList == null || cameraList.Count == 0)
+        {
+            Debug.LogWarning("No cameras available for updating resolution.");
+            return;
+        }
+        int width = cameraOriginalIntrinsics[currentCameraIndex].width;
+        int height = cameraOriginalIntrinsics[currentCameraIndex].height;
+        Screen.SetResolution(width, height, false);
+        Debug.Log($"Main camera resolution set to: {width} x {height}");
     }
 
     private void CleanupCurrentScene()
@@ -1001,6 +1103,16 @@ public class SynthesEyesServer : MonoBehaviour{
     }
 
 
+    /**
+     * Save 2D projection and metadata from all camera views for a given frame.
+     *
+     * @param {int} frame - Frame index used for naming the output JSON file.
+     * @param {string} outputPath - Directory path where the metadata JSON will be saved. Defaults to "imgs".
+     *
+     * Gathers 2D screen-space coordinates of anatomical landmarks (e.g., iris, caruncle, interior margin)
+     * from all cameras and stores the ground truth gaze vector and poses. Also logs eyeball and lighting details.
+     * Useful for creating labeled datasets for training or evaluation.
+     */
     private void saveAllCamerasDetails(int frame)
     {
         JSONNode rootNode = new JSONClass();
@@ -1052,6 +1164,7 @@ public class SynthesEyesServer : MonoBehaviour{
             cameraNode.Add("ground_truth", eyeball.GetGazeVector(cam));
         }
 
-        File.WriteAllText(string.Format("imgs/{0}.json", frame), rootNode.ToJSON(0));
+        string filePath = Path.Combine(outputPath, $"{frame}.json");
+        File.WriteAllText(filePath, rootNode.ToJSON(0));
     }
 }
