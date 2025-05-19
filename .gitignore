@@ -1,10 +1,4 @@
-imgs*
 Evaluations/*
-e1/*
-e2/*
-e3/*
-e4/*
-unityeyes1*
 Data*
 Assets/TextMesh*
 
@@ -16,7 +10,6 @@ Build/*
 Obj/*
 WebBuild/*
 WindowsBuild/*
-imgs/*
 UserSettings/*
 
 # ===================================== #
