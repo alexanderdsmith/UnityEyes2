@@ -8,11 +8,11 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 # Package Releases
 Please select the version below for your operating system:
 
-[**Windows**]() *Note: tested on Windows 10 Home*
+[**Windows**](https://uofi.app.box.com/file/1868242189424) (.zip, 258.4 MB) *Note: tested on Windows 10 Home*
 
-[**Linux**]() ( *Note: tested on Ubuntu 22.04 LTS*
+[**Linux**](https://uofi.app.box.com/file/1868233763526) (.zip, 253.8 MB) *Note: tested on Ubuntu 22.04 LTS*
 
-[**MacOS:**](https://uofi.box.com/s/41sv64x2dbrww1r09ofwj0d3ynyj838m) (.zip, 265 MB) *Note: tested on M3 Max Apple Silicon Chip*
+[**MacOS**](https://uofi.box.com/s/41sv64x2dbrww1r09ofwj0d3ynyj838m) (.zip, 265 MB) *Note: tested on M3 Max Apple Silicon Chip*
 
 # How to use UnityEyes 2
 
