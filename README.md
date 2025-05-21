@@ -8,13 +8,18 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 # Package Releases
 Please select the version below for your operating system:
 
-[**Windows**](https://uofi.app.box.com/file/1868242189424) (.zip, 258.4 MB) *Note: tested on Windows 10 Home*
+[**Windows**](https://uofi.app.box.com/file/1868242189424) (.zip, 258 MB) *Note: tested on Windows 10 Home*
 
-[**Linux**](https://uofi.app.box.com/file/1868233763526) (.zip, 253.8 MB) *Note: tested on Ubuntu 22.04 LTS*
+[**Linux**](https://uofi.app.box.com/file/1868233763526) (.zip, 253 MB) *Note: tested on Ubuntu 22.04 LTS*
 
 [**MacOS**](https://uofi.box.com/s/41sv64x2dbrww1r09ofwj0d3ynyj838m) (.zip, 265 MB) *Note: tested on M3 Max Apple Silicon Chip*
 
 # How to use UnityEyes 2
+
+UnityEyes 2 generates figures like the following configuration with 4 cameras (output features overlaid):
+
+<img width="398" alt="image" src="https://github.com/user-attachments/assets/d0429130-00b3-4976-9750-449d46be41a9" />
+
 
 ## Hotkeys
     s: save image
