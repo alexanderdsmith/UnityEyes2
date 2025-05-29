@@ -6,7 +6,7 @@ Updated by Alexander Smith and Brijesh Muthumanickam
 (c) 2025, University of Illinois at Urbana-Champaign
 
 # Package Releases
-Please select the version below for your operating system:
+Note, this package is a work in progress! Please report any issues here. Please select the version below for your operating system:
 
 [**Windows**](https://uofi.app.box.com/file/1868242189424) (.zip, 258 MB) *Note: tested on Windows 10 Home*
 
