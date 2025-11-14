@@ -41,7 +41,7 @@ UnityEyes 2 generates figures like the following configuration with 4 cameras (o
 
 For more detail on resolving pixel-based intrinsics, please see this OpenCV documentation: https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html.
 
-Six parameters define the camera extrinsics: three comprising translation in meters, and three comprising the Euler angles with the ZYZ convention  for rotation, in degrees. Extrinsics can also be calibrated automatically, but may also be determined directly from inspecting a hardware design in CAD software. A helpful tool for confirming extrinsic calibration is this transform tool made by Daniel Dugas: https://dugas.ch/transform_viewer/index.html.
+Six parameters define the camera extrinsics: three comprising translation in meters, and three comprising the Euler angles with the Tait–Bryan Z-Y-X convention for rotation, in degrees. Extrinsics can also be calibrated automatically, but may also be determined directly from inspecting a hardware design in CAD software. A helpful tool for confirming extrinsic calibration is this transform tool made by Daniel Dugas: https://dugas.ch/transform_viewer/index.html.
 
 **Camera array motion center:** We enable the user to define a camera array motion center: a 6 degrees-of-freedom transform relative to the eye as a point from which noise and extrinsic calibration of the camera(s) is defined. All cameras' extrinsics will be defined as child transforms of this motion center. If no motion center is provided by the user, it will default to the extrinsics of the first camera. A user may specify noise parameters which will be applied to the motion center, moving all cameras as a fixed array.
 
