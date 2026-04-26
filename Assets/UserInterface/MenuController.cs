@@ -1906,18 +1906,18 @@ public class MenuController : MonoBehaviour
             }
             cameraNode.Add("extrinsics", extrinsicsNode);
 
-            // JSONNode extrinsicsNoiseNode = new JSONClass();
-            // if (cameraValues.ContainsKey("ExtrinsicsNoise"))
-            // {
-            //     var extrinsicsNoise = cameraValues["ExtrinsicsNoise"];
-            //     extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
-            //     extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
-            //     extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
-            //     extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
-            //     extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
-            //     extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
-            // }
-            // cameraNode.Add("extrinsics_noise", extrinsicsNoiseNode);
+            JSONNode extrinsicsNoiseNode = new JSONClass();
+            if (cameraValues.ContainsKey("ExtrinsicsNoise"))
+            {
+                var extrinsicsNoise = cameraValues["ExtrinsicsNoise"];
+                extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
+                extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
+                extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
+                extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
+                extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
+                extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
+            }
+            cameraNode.Add("extrinsics_noise", extrinsicsNoiseNode);
 
             camerasArray.Add(cameraNode);
         }
@@ -1953,18 +1953,15 @@ public class MenuController : MonoBehaviour
             }
             lightNode.Add("position", extrinsicsNode);
 
-            JSONNode extrinsicsNoiseNode = new JSONClass();
+            JSONNode positionNoiseNode = new JSONClass();
             if (lightValues.ContainsKey("PositionNoiseGroup"))
             {
-                var extrinsicsNoise = lightValues["PositionNoiseGroup"];
-                // extrinsicsNoiseNode.Add("x", new JSONData(extrinsicsNoise.ContainsKey("x") ? extrinsicsNoise["x"] : 0f));
-                // extrinsicsNoiseNode.Add("y", new JSONData(extrinsicsNoise.ContainsKey("y") ? extrinsicsNoise["y"] : 0f));
-                // extrinsicsNoiseNode.Add("z", new JSONData(extrinsicsNoise.ContainsKey("z") ? extrinsicsNoise["z"] : 0f));
-                // extrinsicsNoiseNode.Add("rx", new JSONData(extrinsicsNoise.ContainsKey("rx") ? extrinsicsNoise["rx"] : 0f));
-                // extrinsicsNoiseNode.Add("ry", new JSONData(extrinsicsNoise.ContainsKey("ry") ? extrinsicsNoise["ry"] : 0f));
-                // extrinsicsNoiseNode.Add("rz", new JSONData(extrinsicsNoise.ContainsKey("rz") ? extrinsicsNoise["rz"] : 0f));
+                var positionNoise = lightValues["PositionNoiseGroup"];
+                positionNoiseNode.Add("x", new JSONData(positionNoise.ContainsKey("x") ? positionNoise["x"] : 0f));
+                positionNoiseNode.Add("y", new JSONData(positionNoise.ContainsKey("y") ? positionNoise["y"] : 0f));
+                positionNoiseNode.Add("z", new JSONData(positionNoise.ContainsKey("z") ? positionNoise["z"] : 0f));
             }
-            // lightNode.Add("position_noise", extrinsicsNoiseNode); // TODO: determine logic for this
+            lightNode.Add("position_noise", positionNoiseNode);
 
             JSONNode propertiesNode = new JSONClass();
             if (lightGroupValues[i].ContainsKey("Properties"))
