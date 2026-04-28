@@ -95,9 +95,8 @@ Probed once from the project's data and hard-coded in
 ![Apparent pupil diameter vs `_PupilSize`](figures/pupil-calibration.png)
 
 The curve is monotonic and mildly S-shaped: slope steepens around
-`p = 0` and flattens at the extremes, which is why a linear
-approximation (shown faded for context) underfits at the small-pupil
-end. Selected sample points:
+`p = 0` and flattens at the extremes, so a linear approximation
+underfits at the small-pupil end. Selected sample points:
 
 | `_PupilSize` | apparent pupil diameter |
 |---|---|
