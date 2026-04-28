@@ -78,8 +78,10 @@ The scene can be configured by uploading a JSON file (camera_config.json) contai
 ###### properties: includes range, intensity, color (r,g,b), shadows, and shadow_bias, all defined in the Unity docs for light sources.
 
 ##### eye_parameters:
-###### pupil_size_range: min and max values for the clamped uniform distribution range of the pupil size (in meters)
-###### iris_size_range: min and max values for the clamped uniform distribution range of the iris size (in meters)
+###### pupil_diameter_mm_range: min and max pupil diameter, in **millimeters**. Sampled per frame from a clamped uniform distribution. Useful range ~1.6 mm to ~8.4 mm; values outside this range may produce iris-rendering artifacts. Internally converted to the shader's signed `_PupilSize` UV-multiplier via the linear calibration `_PupilSize = (mm − 5.6) / 2.4`, anchored to ~2 mm at `_PupilSize=−1.5` (empirical lower bound) and ~8 mm at `_PupilSize=1.0` (anatomical max).
+###### iris_diameter_mm_range: min and max iris diameter, in **millimeters**. Sampled per frame from a clamped uniform distribution. The eyeball mesh has a fixed iris-ring radius of 5.8696 mm, so internally `irisSize = mm / 11.7392`. Real human iris diameter is typically 10–12 mm.
+###### pupil_size_range *(deprecated)*: legacy dimensionless `_PupilSize` multiplier range. Honored as a fallback if `pupil_diameter_mm_range` is absent. Values are signed UV-space multipliers in roughly `[−1.5, 1.0]`, **not** meters as previous docs claimed.
+###### iris_size_range *(deprecated)*: legacy dimensionless iris-vertex scaler range. Honored as a fallback if `iris_diameter_mm_range` is absent.
 ###### default_yaw: 0 corresponds to the optical axis aligned with the z axis of the eye. Changing this value will set the center of eye noise to an offset optical direction, rotating about the x axis of the eye(degrees). Note: appropriate physiological yaw range is approximately between -30 and 30 degrees.
 ###### default_pitch: 0 corresponds to the optical axis aligned with the z axis of the eye. Changing this value will set the center of eye noise to an offset optical direction, rotating about the y axis of the eye (degrees). Note: appropriate physiological pitch range is approximately between -45 and 45 degrees.
 ###### yaw_noise: noise, in degrees, about the default_yaw of the eye
