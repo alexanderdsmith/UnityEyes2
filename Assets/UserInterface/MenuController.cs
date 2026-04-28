@@ -779,7 +779,7 @@ public class MenuController : MonoBehaviour
         cameraGroupValues[cameraId]["Intrinsics"] = new Dictionary<string, float>();
         cameraGroupValues[cameraId]["IntrinsicsNoise"] = new Dictionary<string, float>();
         cameraGroupValues[cameraId]["Extrinsics"] = new Dictionary<string, float>();
-        // cameraGroupValues[cameraId]["ExtrinsicsNoise"] = new Dictionary<string, float>();
+        cameraGroupValues[cameraId]["ExtrinsicsNoise"] = new Dictionary<string, float>();
 
         // Initialize Intrinsics and IntrinsicsNoise values
         foreach (string group in new[] { "Intrinsics", "IntrinsicsNoise" })
@@ -793,7 +793,7 @@ public class MenuController : MonoBehaviour
         }
 
         // Initialize Extrinsics and ExtrinsicsNoise values
-        foreach (string group in new[] { "Extrinsics" })
+        foreach (string group in new[] { "Extrinsics", "ExtrinsicsNoise" })
         {
             cameraGroupValues[cameraId][group]["x"] = 0f;
             cameraGroupValues[cameraId][group]["y"] = 0f;
@@ -871,8 +871,8 @@ public class MenuController : MonoBehaviour
                 return "IntrinsicsNoise";
             if (parent.name.Contains("Extrinsics") && !parent.name.Contains("Noise"))
                 return "Extrinsics";
-            // if (parent.name.Contains("ExtrinsicsNoise"))
-            //     return "ExtrinsicsNoise";
+            if (parent.name.Contains("ExtrinsicsNoise"))
+                return "ExtrinsicsNoise";
 
             parent = parent.parent;
         }
