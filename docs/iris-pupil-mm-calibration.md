@@ -151,7 +151,51 @@ photopic-constricted physiological range).
 The patch is a single block in `Assets/Eyeball/EyeShader.shader` and
 preserves the existing iris/sclera luminance detection, refraction
 shift, and material-property pipeline; only the central
-"sample-the-texture-with-shifted-UV" step is replaced.
+"sample-the-texture-with-shifted-UV" step is replaced. The cornea
+keeps its full reflective character — F0 dielectric specular, tear-
+film highlights, fresnel rim — which is anatomically correct (real
+corneas are reflective; eye photographs show catchlights from
+ambient sources).
+
+### Two definitions of "pupil size", reconciled
+
+The analytical model evaluates the **geometric apparent pupil**: the
+boundary in mesh space where the procedural mask flips from "draw
+pupil" to "draw iris". This is the texture-/threshold-independent,
+ground-truth definition used by `pupil_diameter_mm_range` in the
+JSON contract.
+
+A **rendered dark-core** measurement (e.g. `lum < 0.10` thresholding
+on a saved frame) will report a *smaller* diameter than the
+analytical model — typically ~half — because the cornea reflects
+ambient lighting and tear-film/fresnel specular onto the dark pupil
+albedo, lifting the lit luminance above any reasonable dark-pixel
+threshold over an annulus around the pupil edge. This matches what
+you see when threshold-detecting the pupil in a real eye photo: only
+the deepest core registers as "very dark", with the cornea reflection
+covering the rest of the aperture. The discrepancy is a property of
+the rendering + detection method, not of the calibration.
+
+### Verification
+
+Dense sweep (every 0.25 in `_PupilSize` from −3.0 to +1.0,
+17 samples per shader, texture pinned to `eyeball_brown`, on-axis
+camera at 4 cm):
+
+![Verification: rendered pupil vs analytical, iris-bleach
+quantification](figures/pupil-shader-verification.png)
+
+Top panel shows that both shaders track the analytical curve's
+*shape*; the AFTER shader sits ~0.5–1 mm above BEFORE because its
+procedural pupil albedo is darker than the texture's anti-aliased
+pupil. Both stay below the analytical's geometric prediction by
+~3 mm — the cornea-reflective offset described above.
+
+Bottom panel quantifies the iris-bleach. Before the patch, 12 of
+17 samples have iris luminance above 0.30 (visibly washed-out
+white); after the patch, none do. Peak iris luminance drops from
+0.718 at `_PupilSize = -3.0` (essentially white) to 0.215 (its
+normal colored value). Raw data: `docs/figures/pupil-shader-verification.csv`.
 
 ## Caveats (within the supported range, 4 ≤ mm ≤ 8.7)
 
