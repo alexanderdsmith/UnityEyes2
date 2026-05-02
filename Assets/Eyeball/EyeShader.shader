@@ -118,11 +118,25 @@ Shader "EyeShader" {
             // those samples to a fixed mid-iris UV-radius (0.105 lies in
             // the colour-saturated iris band, between the texture pupil
             // boundary 0.0788 and the iris-ring 0.1385).
+            //
+            // Important: the rerouting direction must use the *un-
+            // refracted* mesh UV (IN.uv_MainTex), not the post-refraction
+            // uv. Cornea-apex fragments all have un-refracted uv0 close
+            // to (0.5, 0.5), but the refraction offset adds a directional
+            // bias common to those neighbouring fragments. Using the
+            // post-refraction uv direction makes them all sample roughly
+            // the same iris texel, which shows up as a bluish streak
+            // above the pupil at extreme negative _PupilSize. Using d0
+            // (un-refracted) instead lets each apex fragment sample its
+            // own angular position on the 0.105 circle, smoothing the
+            // rerouted region.
+            float2 d0 = IN.uv_MainTex - float2(0.5, 0.5);
+            float r0 = length(d0);
             float2 uv_iris = uv;
             if (uv_radius < R_PUPIL_UV)
             {
-                float2 dir = (uv_radius > 1e-5)
-                    ? (d_centre / uv_radius)
+                float2 dir = (r0 > 1e-5)
+                    ? (d0 / r0)
                     : float2(1.0, 0.0);
                 uv_iris = float2(0.5, 0.5) + dir * 0.105;
             }
