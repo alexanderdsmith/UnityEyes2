@@ -19,9 +19,13 @@ Shader "EyeShader" {
         Tags { "RenderType" = "Opaque" }
         CGPROGRAM
         
-        // Physically based Standard lighting model, and enable shadows on all light types
+        // Physically based Standard lighting model, and enable shadows on all light types.
+        // `finalcolor:PupilFinalColor` lets us force the procedural pupil region
+        // to true black AFTER Unity's PBR pipeline has run (otherwise the
+        // dielectric F0 ≈ 0.04 specular and skybox indirect lifts the pupil
+        // luminance well above any reasonable dark-pixel detection threshold).
         #include "UnityPBSLighting.cginc"
-        #pragma surface surf Standard fullforwardshadows keepalpha 
+        #pragma surface surf Standard fullforwardshadows keepalpha finalcolor:PupilFinalColor
 //		vertex:vert
 //		#include "Tessellation.cginc"
         
@@ -167,8 +171,40 @@ Shader "EyeShader" {
             // This slightly enhances reflectivity everywhere, simulating tear film
             float tearFilm = 0.65;  // Strength of the wet film effect
             o.Smoothness = max(o.Smoothness, baseSmooth + tearFilm);
-            
+
             o.Alpha = 0.5f;
+        }
+
+        // finalcolor hook — runs after Unity's Standard PBR has produced
+        // the lit pixel. We recompute the procedural pupil mask from
+        // worldPos / uv (cheap, ~1 dot + 1 length + smoothstep) and lerp
+        // the lit colour towards true black inside the pupil. Doing this
+        // post-PBR is the only way to suppress the dielectric F0 ≈ 0.04
+        // specular term and indirect/skybox contribution that would
+        // otherwise lift the rendered pupil luminance to mid-gray.
+        // The pupil mask here is identical to the one in surf() and to
+        // the inequality EyeSizeCalibration.cs evaluates analytically,
+        // so the rendered dark-core diameter matches the analytical
+        // apparent-pupil prediction.
+        void PupilFinalColor(Input IN, SurfaceOutputStandard o, inout fixed4 color)
+        {
+            float3 frontNormalW = normalize(
+                mul((float3x3) unity_ObjectToWorld, float3(0.0, 0.0, 1.0)));
+            float heightW = saturate(dot(
+                IN.worldPos - mul((float3x3) unity_ObjectToWorld, float3(0.0, 0.0, 0.0109)),
+                frontNormalW));
+
+            float2 uv = IN.uv_MainTex;
+            float2 d_centre = uv - float2(0.5, 0.5);
+            float uv_radius = length(d_centre);
+            float pupil_factor = abs(1.0 - heightW * _PupilSize * 3.0);
+            float pupil_score = uv_radius * pupil_factor;
+            const float R_PUPIL_UV = 0.0788;
+            float pupil_mask = 1.0 - smoothstep(R_PUPIL_UV - 0.004,
+                                                 R_PUPIL_UV + 0.004,
+                                                 pupil_score);
+
+            color.rgb = lerp(color.rgb, float3(0.0, 0.0, 0.0), pupil_mask);
         }
         
         // void surf (Input IN, inout SurfaceOutputStandard o) {
