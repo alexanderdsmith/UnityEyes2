@@ -126,32 +126,17 @@ visibly colored; `_PupilSize ≤ -2.0` produced an increasingly white
 pupil — a broken iris.
 
 This patch **rewrites the pupil-rendering portion of `EyeShader.shader`
-in two places**:
+to use a procedural pupil mask**. Instead of distorting UVs and reading
+the texture's pupil from a shifted coordinate, the shader evaluates the
+exact same boundary inequality the calibration uses,
 
-1. **Procedural pupil mask in `surf()`.** The shader evaluates the
-   same boundary inequality the calibration uses,
+> ```
+> |uv − 0.5| · |1 − heightW · _PupilSize · 3|  ≤  r_pupil_uv
+> ```
 
-   > ```
-   > |uv − 0.5| · |1 − heightW · _PupilSize · 3|  ≤  r_pupil_uv
-   > ```
-
-   per fragment. Inside the apparent pupil it outputs a near-black
-   colour; outside it samples the iris texture at the un-distorted UV.
-
-2. **`finalcolor:PupilFinalColor` hook.** Re-evaluates the same mask
-   *after* Unity's Standard PBR pipeline and forces the post-PBR
-   colour to true black inside the pupil. Without this hook the
-   dielectric F0 ≈ 0.04 specular and skybox indirect lift the pupil
-   from the procedural mask's near-black albedo to mid-grey
-   (≈ 0.3–0.5 luminance), so the rendered dark-core diameter
-   would be ~half the analytical's geometric apparent pupil. The
-   final-colour override makes the rendered pupil a true matte-black
-   light absorber — the closest analogue to a real pupil aperture
-   (which absorbs almost all incident light at the retina).
-
-Iris colour is independent of `_PupilSize` and never bleaches; the
-rendered dark-pupil diameter agrees with the analytical apparent-pupil
-prediction to within ±0.7 mm (the smoothstep transition band):
+per fragment. Inside the apparent pupil it outputs a near-black colour;
+outside it samples the iris texture at the un-distorted UV. Iris colour
+is therefore independent of `_PupilSize` and never bleaches:
 
 ![Shader fix: before vs after](figures/pupil-shader-fix.png)
 
@@ -159,8 +144,7 @@ Top row is the original shader, bottom row is the patched shader, both
 rendered at identical `_PupilSize` values from +1.0 down to −3.0. The
 predicted pupil diameter (analytical model) is shown above each column.
 After the patch the iris stays colored, the procedural pupil shrinks
-smoothly across the full range, the rendered dark-core matches the
-analytical prediction, and `PUPIL_MM_MIN` can drop from 4.0 mm
+smoothly across the full range, and `PUPIL_MM_MIN` can drop from 4.0 mm
 (the original shader's safe floor) to 2.5 mm (well inside the
 photopic-constricted physiological range).
 
