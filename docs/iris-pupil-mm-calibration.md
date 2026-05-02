@@ -110,40 +110,48 @@ The natural pupil at `_PupilSize = 0` (no UV shift) corresponds to a
 mesh radius of `(r_pupil_uv / r_iris_uv) · r_iris_world ≈ 3.34 mm`,
 giving a diameter of 6.68 mm.
 
-## Lower-bound limit (why `PUPIL_MM_MIN = 4.0`)
+## Lower-bound limit (`PUPIL_MM_MIN = 2.5`)
 
-Mathematically, the model continues to produce valid output for any
-`_PupilSize`: at `_PupilSize = -3.0` it predicts a 2.78 mm pupil, well
-inside the photopic-constricted range. **The actual rendering does not
-follow** — at sufficiently negative values the UV transform pushes
-sample coordinates *outside* the iris ring of the texture, into the
-sclera region, so the iris bleaches to white instead of constricting
-cleanly:
+The analytical model produces valid output for any `_PupilSize`. The
+*original* `EyeShader.shader` did not — at sufficiently negative
+`_PupilSize` the UV transform pushed sample coordinates outside the
+iris ring of the texture into the sclera band, bleaching the iris to
+white instead of constricting cleanly:
 
-![PupilSize artifact regime](figures/pupil-artifact-strip.png)
+![Original shader artifact regime](figures/pupil-artifact-strip.png)
 
-The transition is sharp. `_PupilSize ∈ [+1.0, -1.5]` keeps the iris
-visibly colored; `_PupilSize ≤ -2.0` produces an increasingly white
-"iris" with a tiny dark dot in the middle, which is not a photographic
-small pupil — it is a broken iris. The shipped clamp `PUPIL_MM_MIN = 4.0`
-respects that threshold: 4 mm corresponds to roughly `_PupilSize = -1.5`.
+The transition was sharp: `_PupilSize ∈ [+1.0, -1.5]` kept the iris
+visibly colored; `_PupilSize ≤ -2.0` produced an increasingly white
+"iris" with a tiny dark dot in the middle. Not a photographic small
+pupil — a broken iris.
 
-To produce *clean* pupils smaller than 4 mm, the shader and/or texture
-need to be modified. Three feasible paths (each is a separate work item,
-not part of this patch):
+This patch **rewrites the pupil-rendering portion of `EyeShader.shader`
+to use a procedural pupil mask**. Instead of distorting UVs and reading
+the texture's pupil from a shifted coordinate, the shader evaluates the
+exact same boundary inequality the calibration uses,
 
-1. **Pupil-mask overlay.** Draw an analytical black disk on top of the
-   iris texture in the shader, sized programmatically. Decouples pupil
-   size from the UV-shift trick entirely; supports arbitrary 0–8 mm
-   pupils with no texture artifact.
-2. **UV clamping.** Modify `EyeShader.shader` so that `uv_after` is
-   clamped to a circular region inside the iris ring. Eliminates sclera
-   bleed but caps the achievable apparent pupil at whatever radius the
-   clamp allows.
-3. **Texture redesign.** Repaint the iris textures with a wider radial
-   "safe zone" between the iris's outer edge and the sclera. Cheap if
-   regenerable from the source asset; otherwise five textures to edit by
-   hand.
+> ```
+> |uv − 0.5| · |1 − heightW · _PupilSize · 3|  ≤  r_pupil_uv
+> ```
+
+per fragment. Inside the apparent pupil it outputs a near-black colour;
+outside it samples the iris texture at the un-distorted UV. Iris colour
+is therefore independent of `_PupilSize` and never bleaches:
+
+![Shader fix: before vs after](figures/pupil-shader-fix.png)
+
+Top row is the original shader, bottom row is the patched shader, both
+rendered at identical `_PupilSize` values from +1.0 down to −3.0. The
+predicted pupil diameter (analytical model) is shown above each column.
+After the patch the iris stays colored, the procedural pupil shrinks
+smoothly across the full range, and `PUPIL_MM_MIN` can drop from 4.0 mm
+(the original shader's safe floor) to 2.5 mm (well inside the
+photopic-constricted physiological range).
+
+The patch is a single block in `Assets/Eyeball/EyeShader.shader` and
+preserves the existing iris/sclera luminance detection, refraction
+shift, and material-property pipeline; only the central
+"sample-the-texture-with-shifted-UV" step is replaced.
 
 ## Caveats (within the supported range, 4 ≤ mm ≤ 8.7)
 
@@ -193,8 +201,10 @@ All 38 assertions passed.
 |---|---|
 | `Assets/EyeSizeCalibration.cs` (new) | constants and conversion helpers |
 | `Assets/SynthesEyesServer.cs` | `LoadCamerasFromConfig` reads the new mm keys, falls back to legacy |
+| `Assets/Eyeball/EyeShader.shader` | replace UV-shift pupil with procedural pupil mask (eliminates iris-bleach at extreme `_PupilSize`, allows `PUPIL_MM_MIN = 2.5`) |
 | `README.md` | documents the new keys and deprecates the old ones |
 | `docs/iris-pupil-mm-calibration.md` (this file) | derivation, constants, caveats |
 | `docs/figures/pupil-calibration.png` | the apparent-diameter figure |
 | `docs/figures/pupil-calibration-sweep.csv` | numerical sweep data |
-| `docs/figures/pupil-artifact-strip.png` | rendered eye at `_PupilSize` from +1.0 down to −3.0, illustrating the iris-bleaching regime that bounds `PUPIL_MM_MIN` |
+| `docs/figures/pupil-artifact-strip.png` | original shader's iris-bleach regime, kept for context |
+| `docs/figures/pupil-shader-fix.png` | side-by-side before/after of the shader patch |

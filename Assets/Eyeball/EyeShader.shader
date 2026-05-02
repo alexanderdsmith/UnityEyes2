@@ -85,11 +85,51 @@ Shader "EyeShader" {
             float2 uv = IN.uv_MainTex;
             uv += float2(-1.0, 1.0)*offsetL2 * float2(24,24);
             
-            float2 offset_from_centre = (float2(0.5, 0.5) - uv) * heightW;
-            uv += offset_from_centre * _PupilSize * 3;
+            // Procedural pupil mask. The previous design distorted UVs by
+            // the formula
+            //     uv += (0.5 - uv) * heightW * _PupilSize * 3;
+            // and then sampled the texture at the shifted UV. At
+            // |_PupilSize| beyond ~1.5 the shifted UV landed outside the
+            // iris region of the texture and bleached the iris to sclera
+            // white. Instead we keep `uv` un-distorted (so iris colors
+            // are read straight from the texture) and apply the same
+            // pupil-boundary inequality EyeSizeCalibration.cs uses to
+            // decide pupil-vs-iris per fragment:
+            //     |uv - 0.5| * |1 - heightW * _PupilSize * 3|  <=  r_pupil_uv
+            // is true inside the apparent pupil. We render those
+            // fragments as a near-black pupil colour and leave the iris
+            // fragments to sample the texture at their natural UV.
+            //
+            // This decouples pupil rendering from texture content and
+            // supports arbitrarily small pupils without iris distortion.
+            const float R_PUPIL_UV = 0.0788;        // texture pupil/iris boundary
+            float2 d_centre = uv - float2(0.5, 0.5);
+            float uv_radius = length(d_centre);
+            float pupil_factor = abs(1.0 - heightW * _PupilSize * 3.0);
+            float pupil_score = uv_radius * pupil_factor;
+            float pupil_mask = 1.0 - smoothstep(R_PUPIL_UV - 0.004,
+                                                 R_PUPIL_UV + 0.004,
+                                                 pupil_score);
 
-            // Get the base eye texture color
-            float4 eyeColor = tex2D(_MainTex, uv);
+            // For iris fragments whose un-shifted UV lands inside the
+            // texture's natural pupil disk (|uv - 0.5| < r_pupil_uv) we
+            // can't sample the texture there — that would reveal the
+            // texture's built-in pupil under the procedural one. Re-route
+            // those samples to a fixed mid-iris UV-radius (0.105 lies in
+            // the colour-saturated iris band, between the texture pupil
+            // boundary 0.0788 and the iris-ring 0.1385).
+            float2 uv_iris = uv;
+            if (uv_radius < R_PUPIL_UV)
+            {
+                float2 dir = (uv_radius > 1e-5)
+                    ? (d_centre / uv_radius)
+                    : float2(1.0, 0.0);
+                uv_iris = float2(0.5, 0.5) + dir * 0.105;
+            }
+
+            float4 irisColor = tex2D(_MainTex, uv_iris);
+            const float4 pupilColor = float4(0.02, 0.02, 0.02, 1.0);
+            float4 eyeColor = lerp(irisColor, pupilColor, pupil_mask);
             
             // Determine if we're on the iris/pupil vs. the sclera (white part)
             // by checking color luminance - darker areas are iris/pupil

@@ -72,10 +72,13 @@ public static class EyeSizeCalibration
     const float CORNEA_OFFSET_M = 0.0109f;
     const float LOSSY_SCALE     = 100f;       // mesh m → world cm (probe-confirmed)
 
-    // Useful clamp range for mm input. Below ~4 mm corresponds to
-    // _PupilSize < −1.5 where the shader produces iris artifacts; above
-    // ~8.7 mm exceeds the analytically-tested upper end at +1.0.
-    public const float PUPIL_MM_MIN = 4.0f;
+    // Useful clamp range for mm input. The lower bound was 4.0 mm
+    // before the EyeShader was patched (procedural pupil mask, see
+    // Assets/Eyeball/EyeShader.shader and docs/iris-pupil-mm-calibration.md);
+    // since the shader no longer bleaches the iris at extreme negative
+    // _PupilSize, the lower bound is now set by the analytical model's
+    // tested floor (_PupilSize ≈ -3.0 → 2.78 mm).
+    public const float PUPIL_MM_MIN = 2.5f;
     public const float PUPIL_MM_MAX = 8.7f;
 
     // ---- Iris helpers (linear, exact) ----
@@ -111,12 +114,12 @@ public static class EyeSizeCalibration
     // [-1.5, +1.0]; bisect to within 1e-4 mm.
     public static float PupilDiameterMmToPupilSize(float mm)
     {
-        // Domain bounds: shader's declared range is [-1, 1]; empirically
-        // values down to ~-1.5 still render cleanly. Search a slight
-        // overhang in case mm is at or beyond the corner of the curve.
-        float lo = -2.0f, hi = 1.5f;
-        // Verify monotonic direction (forward is increasing in ps).
-        // bisect.
+        // Bisection bounds. The shader (post procedural-mask patch)
+        // renders cleanly for all _PupilSize, but the analytical model
+        // saturates near _PupilSize ≈ -3.5 (apparent pupil approaches a
+        // floor as the cornea-apex factor maxes out). Search a wider
+        // negative range than before to bracket small-mm inputs.
+        float lo = -3.5f, hi = 1.5f;
         for (int i = 0; i < 60; i++)
         {
             float mid = 0.5f * (lo + hi);
