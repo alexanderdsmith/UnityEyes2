@@ -103,59 +103,51 @@ Shader "EyeShader" {
             // This decouples pupil rendering from texture content and
             // supports arbitrarily small pupils without iris distortion.
             const float R_PUPIL_UV = 0.0788;        // texture pupil/iris boundary
-            float2 d_centre = uv - float2(0.5, 0.5);
-            float uv_radius = length(d_centre);
+
+            // The pupil mask AND the iris sampling both work in the
+            // *un-refracted* mesh-UV coordinate system. Earlier
+            // implementations split the two: pupil mask was driven by
+            // post-refraction `uv` while iris samples were rerouted using
+            // un-refracted `d0`. Those two coordinate systems differ
+            // wherever refraction is non-trivial (off-axis, near the
+            // cornea apex), and the procedural-pupil/rerouted-iris
+            // boundary fell on the post-refraction circle while the
+            // rerouted iris colours used un-refracted angular positions
+            // — leaving a visible "ring" between inner and outer iris
+            // colour bands.
+            //
+            // Unifying on un-refracted UV makes the boundary trivially
+            // continuous: a single `uv_iris = 0.5 + dir0 * max(r0, ...)`
+            // formula serves both inside and outside the pupil. The
+            // pupil mask boundary lies on the same un-refracted circle
+            // the iris samples follow, so they line up perfectly.
+            //
+            // Trade-off: the iris loses the lateral refraction shift
+            // (the cornea's lens-like sideways displacement of the iris
+            // texture). For an on-axis camera that shift is small and
+            // largely radially symmetric — barely noticeable — and well
+            // worth losing to fix the boundary artifact. The cornea's
+            // apparent-pupil-deformation factor `heightW * _PupilSize *
+            // 3` still depends on the cornea bulge geometry (heightW),
+            // so apparent pupil size still tracks the analytical model.
+            const float REROUTE_EPSILON = 0.005;
+            float2 d0 = IN.uv_MainTex - float2(0.5, 0.5);
+            float r0 = length(d0);
+            float2 dir0 = (r0 > 1e-5) ? (d0 / r0) : float2(1.0, 0.0);
+
             float pupil_factor = abs(1.0 - heightW * _PupilSize * 3.0);
-            float pupil_score = uv_radius * pupil_factor;
+            float pupil_score = r0 * pupil_factor;
             float pupil_mask = 1.0 - smoothstep(R_PUPIL_UV - 0.004,
                                                  R_PUPIL_UV + 0.004,
                                                  pupil_score);
 
-            // For iris fragments whose *post-refraction* UV lands inside
-            // the texture's natural pupil disk (the `uv_radius < R_PUPIL_UV`
-            // test below uses the post-refraction `uv`, since that is the
-            // texel actually sampled), we can't sample the texture there —
-            // that would reveal the texture's built-in pupil under the
-            // procedural one. Re-route those samples to the iris texture's
-            // *inner edge*, just outside the pupil boundary
-            // (R_PUPIL_UV + REROUTE_EPSILON).
-            //
-            // Two design choices that together remove the visible ring:
-            //
-            //   1. Use the *un-refracted* mesh UV (IN.uv_MainTex) for the
-            //      angular direction. Cornea-apex fragments all have
-            //      un-refracted uv0 close to (0.5, 0.5), but the
-            //      refraction offset adds a directional bias common to
-            //      neighbouring fragments. Using the post-refraction uv
-            //      direction makes them cluster on the same iris texel,
-            //      showing as a streak above the pupil at extreme
-            //      negative _PupilSize. Using d0 (un-refracted) lets
-            //      each apex fragment sample its own angular position.
-            //
-            //   2. Reroute to the iris *inner edge* (radius
-            //      R_PUPIL_UV + REROUTE_EPSILON), not the iris-band
-            //      midpoint 0.105. The texture's color just outside the
-            //      pupil boundary continuously matches what neighbouring
-            //      natural samples (uv_radius slightly > R_PUPIL_UV)
-            //      produce. Sampling at 0.105 (mid-band) instead gave a
-            //      brighter, color-saturated iris band that didn't
-            //      match the natural-sample colors at the boundary.
-            //
-            // Outer fragments still sample at the post-refraction `uv`
-            // (preserves the cornea's lens-like depth shift on the
-            // visible iris position).
-            const float REROUTE_EPSILON = 0.005;
-            float2 d0 = IN.uv_MainTex - float2(0.5, 0.5);
-            float r0 = length(d0);
-            float2 uv_iris = uv;
-            if (uv_radius < R_PUPIL_UV)
-            {
-                float2 dir = (r0 > 1e-5)
-                    ? (d0 / r0)
-                    : float2(1.0, 0.0);
-                uv_iris = float2(0.5, 0.5) + dir * (R_PUPIL_UV + REROUTE_EPSILON);
-            }
-
+            // Iris sample radius = un-refracted radius, clamped to ≥
+            // R_PUPIL_UV + ε so we never sample inside the texture's
+            // natural pupil disk. At the boundary r0 = R_PUPIL_UV the
+            // formula reduces to the same point on either side, so the
+            // transition is continuous.
+            float r_iris = max(r0, R_PUPIL_UV + REROUTE_EPSILON);
+            float2 uv_iris = float2(0.5, 0.5) + dir0 * r_iris;
             float4 irisColor = tex2D(_MainTex, uv_iris);
             const float4 pupilColor = float4(0.02, 0.02, 0.02, 1.0);
             float4 eyeColor = lerp(irisColor, pupilColor, pupil_mask);
