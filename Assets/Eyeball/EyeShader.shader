@@ -111,25 +111,40 @@ Shader "EyeShader" {
                                                  R_PUPIL_UV + 0.004,
                                                  pupil_score);
 
-            // For iris fragments whose un-shifted UV lands inside the
-            // texture's natural pupil disk (|uv - 0.5| < r_pupil_uv) we
-            // can't sample the texture there — that would reveal the
-            // texture's built-in pupil under the procedural one. Re-route
-            // those samples to a fixed mid-iris UV-radius (0.105 lies in
-            // the colour-saturated iris band, between the texture pupil
-            // boundary 0.0788 and the iris-ring 0.1385).
+            // For iris fragments whose *post-refraction* UV lands inside
+            // the texture's natural pupil disk (the `uv_radius < R_PUPIL_UV`
+            // test below uses the post-refraction `uv`, since that is the
+            // texel actually sampled), we can't sample the texture there —
+            // that would reveal the texture's built-in pupil under the
+            // procedural one. Re-route those samples to the iris texture's
+            // *inner edge*, just outside the pupil boundary
+            // (R_PUPIL_UV + REROUTE_EPSILON).
             //
-            // Important: the rerouting direction must use the *un-
-            // refracted* mesh UV (IN.uv_MainTex), not the post-refraction
-            // uv. Cornea-apex fragments all have un-refracted uv0 close
-            // to (0.5, 0.5), but the refraction offset adds a directional
-            // bias common to those neighbouring fragments. Using the
-            // post-refraction uv direction makes them all sample roughly
-            // the same iris texel, which shows up as a bluish streak
-            // above the pupil at extreme negative _PupilSize. Using d0
-            // (un-refracted) instead lets each apex fragment sample its
-            // own angular position on the 0.105 circle, smoothing the
-            // rerouted region.
+            // Two design choices that together remove the visible ring:
+            //
+            //   1. Use the *un-refracted* mesh UV (IN.uv_MainTex) for the
+            //      angular direction. Cornea-apex fragments all have
+            //      un-refracted uv0 close to (0.5, 0.5), but the
+            //      refraction offset adds a directional bias common to
+            //      neighbouring fragments. Using the post-refraction uv
+            //      direction makes them cluster on the same iris texel,
+            //      showing as a streak above the pupil at extreme
+            //      negative _PupilSize. Using d0 (un-refracted) lets
+            //      each apex fragment sample its own angular position.
+            //
+            //   2. Reroute to the iris *inner edge* (radius
+            //      R_PUPIL_UV + REROUTE_EPSILON), not the iris-band
+            //      midpoint 0.105. The texture's color just outside the
+            //      pupil boundary continuously matches what neighbouring
+            //      natural samples (uv_radius slightly > R_PUPIL_UV)
+            //      produce. Sampling at 0.105 (mid-band) instead gave a
+            //      brighter, color-saturated iris band that didn't
+            //      match the natural-sample colors at the boundary.
+            //
+            // Outer fragments still sample at the post-refraction `uv`
+            // (preserves the cornea's lens-like depth shift on the
+            // visible iris position).
+            const float REROUTE_EPSILON = 0.005;
             float2 d0 = IN.uv_MainTex - float2(0.5, 0.5);
             float r0 = length(d0);
             float2 uv_iris = uv;
@@ -138,7 +153,7 @@ Shader "EyeShader" {
                 float2 dir = (r0 > 1e-5)
                     ? (d0 / r0)
                     : float2(1.0, 0.0);
-                uv_iris = float2(0.5, 0.5) + dir * 0.105;
+                uv_iris = float2(0.5, 0.5) + dir * (R_PUPIL_UV + REROUTE_EPSILON);
             }
 
             float4 irisColor = tex2D(_MainTex, uv_iris);
