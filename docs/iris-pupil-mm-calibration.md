@@ -126,17 +126,52 @@ visibly colored; `_PupilSize ≤ -2.0` produced an increasingly white
 pupil — a broken iris.
 
 This patch **rewrites the pupil-rendering portion of `EyeShader.shader`
-to use a procedural pupil mask**. Instead of distorting UVs and reading
-the texture's pupil from a shifted coordinate, the shader evaluates the
-exact same boundary inequality the calibration uses,
+to use a procedural pupil mask combined with a piecewise radial remap
+of the iris-band texture sample**. Instead of distorting UVs and
+reading the texture's pupil from a shifted coordinate, the shader
+evaluates the exact same boundary inequality the calibration uses,
 
 > ```
 > |uv − 0.5| · |1 − heightW · _PupilSize · 3|  ≤  r_pupil_uv
 > ```
 
-per fragment. Inside the apparent pupil it outputs a near-black colour;
-outside it samples the iris texture at the un-distorted UV. Iris colour
-is therefore independent of `_PupilSize` and never bleaches:
+per fragment, giving an apparent pupil radius
+
+> ```
+> r_app = r_pupil_uv / |1 − heightW · _PupilSize · 3|.
+> ```
+
+The shader then chooses a *sample radius* `r_sample` from the screen
+radius `r0 = |uv − 0.5|`:
+
+| screen radius | sample radius | meaning |
+|---|---|---|
+| `r0 < r_app` | (any — masked dark) | inside apparent pupil → procedural near-black albedo |
+| `r_app ≤ r0 ≤ R_iris_uv` | `R_pupil_uv + (R_iris_uv − R_pupil_uv) · (r0 − r_app) / (R_iris_uv − r_app)` | iris band linearly stretched/compressed to fill `[r_app, R_iris_uv]` on screen |
+| `r0 > R_iris_uv` | `r0` | natural sample (sclera, eyelashes, skin — outside cornea) |
+
+The texture is sampled along the screen-radius direction at
+`r_sample`, with the existing lateral refraction shift reapplied.
+Continuity holds at both transitions:
+
+- At `r0 = R_iris_uv` the inside and outside branches both sample at
+  `r_sample = R_iris_uv` → the limbus is continuous.
+- At `r0 = r_app` the iris-band branch samples at `r_sample = R_pupil_uv`
+  (the texture's natural inner-iris-ring colour), so the procedural
+  near-black pupil edge meets the texture's own pupil-iris transition
+  colour — reading as a natural pupil-iris boundary.
+
+Net behaviour:
+
+- For `_PupilSize = 0` the formula gives `r_app = R_pupil_uv` and
+  `r_sample = r0` everywhere → identical to natural texture sampling.
+- For `_PupilSize < 0` (apparent pupil shrinks) the iris band is
+  *radially stretched* inward to fill the larger screen iris annulus.
+  No iris colour is ever sampled past `R_iris_uv`, so the original
+  shader's iris-to-sclera bleach is structurally impossible.
+- For `_PupilSize > 0` (apparent pupil grows) the iris band is
+  *radially compressed* into a thinner screen annulus. The limbus
+  stays anchored at `R_iris_uv`.
 
 ![Shader fix: before vs after](figures/pupil-shader-fix.png)
 
@@ -148,6 +183,13 @@ smoothly across the full range, and `PUPIL_MM_MIN` can drop from 4.0 mm
 (the original shader's safe floor) to 2.5 mm (well inside the
 photopic-constricted physiological range).
 
+(The figure was generated against an earlier procedural-mask-only
+iteration of the patch. The current radial-stretch shader has the same
+no-bleach property and the same monotone pupil-diameter behaviour, plus
+the extra property that the *visible* pupil edge tracks `r_app`
+directly rather than being clamped at the texture's natural pupil disk
+for negative `_PupilSize`.)
+
 The patch is a single block in `Assets/Eyeball/EyeShader.shader` and
 preserves the existing iris/sclera luminance detection, refraction
 shift, and material-property pipeline; only the central
@@ -156,6 +198,22 @@ keeps its full reflective character — F0 dielectric specular, tear-
 film highlights, fresnel rim — which is anatomically correct (real
 corneas are reflective; eye photographs show catchlights from
 ambient sources).
+
+**Why a single radial-mapping pass instead of separate inside/outside
+sampling.** Earlier iterations split the work — pupil mask on a
+post-refraction circle, iris colours rerouted from a fixed inner
+radius — which placed two different texels next to each other at the
+boundary and produced a visible concentric "rim" inside the iris.
+Mapping every iris-band fragment onto a single monotone curve in the
+texture's iris band eliminates that discontinuity by construction:
+there is only one texture sample per fragment, and the curve passes
+through both anchor points exactly. The cost is a radial *gradient*
+mismatch at `r0 = R_iris_uv` (sample radius advances slower across
+the screen iris than across the screen sclera), which manifests as
+a slight radial-fibre stretching at extreme negative `_PupilSize`.
+Real irises have radial fibres, so the stretching reads as
+exaggerated-but-correctly-oriented detail rather than a foreign
+artifact.
 
 ### Two definitions of "pupil size", reconciled
 
@@ -217,6 +275,16 @@ normal colored value). Raw data: `docs/figures/pupil-shader-verification.csv`.
    calibration assumes `irisSize = 1`. For `iris_diameter_mm_range`
    centered around the natural 11.74 mm this introduces sub-millimetre
    error.
+4. **Radial-fibre exaggeration at extreme small pupils.** The
+   piecewise iris-band remap stretches the texture's iris band over
+   the wider screen annulus when `r_app ≪ R_pupil_uv`. At
+   `_PupilSize ≲ −2` (≈ 3 mm pupil and below) the texture's natural
+   radial fibres are stretched ~3–5× radially, becoming visibly
+   spike-like. This is anatomically *plausible* (real irises have
+   radial striations) but exaggerated. Calibration accuracy is
+   unaffected — the apparent pupil boundary still solves the
+   analytical inequality exactly — but downstream consumers of the
+   rendered iris pattern at small pupil sizes should be aware.
 
 These caveats are the cost of a closed-form mapping; a future
 render-and-measure refinement could absorb them into the
@@ -245,7 +313,7 @@ All 38 assertions passed.
 |---|---|
 | `Assets/EyeSizeCalibration.cs` (new) | constants and conversion helpers |
 | `Assets/SynthesEyesServer.cs` | `LoadCamerasFromConfig` reads the new mm keys, falls back to legacy |
-| `Assets/Eyeball/EyeShader.shader` | replace UV-shift pupil with procedural pupil mask (eliminates iris-bleach at extreme `_PupilSize`, allows `PUPIL_MM_MIN = 2.5`) |
+| `Assets/Eyeball/EyeShader.shader` | replace UV-shift pupil with procedural pupil mask + piecewise radial iris-band remap (eliminates iris-bleach at extreme `_PupilSize`, restores monotone pupil shrinking that tracks `r_app`, allows `PUPIL_MM_MIN = 2.5`) |
 | `README.md` | documents the new keys and deprecates the old ones |
 | `docs/iris-pupil-mm-calibration.md` (this file) | derivation, constants, caveats |
 | `docs/figures/pupil-calibration.png` | the apparent-diameter figure |

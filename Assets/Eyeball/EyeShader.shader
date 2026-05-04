@@ -85,70 +85,80 @@ Shader "EyeShader" {
             float2 uv = IN.uv_MainTex;
             uv += float2(-1.0, 1.0)*offsetL2 * float2(24,24);
             
-            // Procedural pupil mask. The previous design distorted UVs by
-            // the formula
-            //     uv += (0.5 - uv) * heightW * _PupilSize * 3;
-            // and then sampled the texture at the shifted UV. At
-            // |_PupilSize| beyond ~1.5 the shifted UV landed outside the
-            // iris region of the texture and bleached the iris to sclera
-            // white. Instead we keep `uv` un-distorted (so iris colors
-            // are read straight from the texture) and apply the same
-            // pupil-boundary inequality EyeSizeCalibration.cs uses to
-            // decide pupil-vs-iris per fragment:
-            //     |uv - 0.5| * |1 - heightW * _PupilSize * 3|  <=  r_pupil_uv
-            // is true inside the apparent pupil. We render those
-            // fragments as a near-black pupil colour and leave the iris
-            // fragments to sample the texture at their natural UV.
+            // Pupil rendering: procedural mask + radial iris-band remap.
             //
-            // This decouples pupil rendering from texture content and
-            // supports arbitrarily small pupils without iris distortion.
-            const float R_PUPIL_UV = 0.0788;        // texture pupil/iris boundary
+            // Texture layout (constants from mesh + texture probes):
+            //   r in [0,                R_PUPIL_UV] → natural texture pupil
+            //   r in [R_PUPIL_UV,       R_IRIS_UV ] → natural iris band
+            //   r >  R_IRIS_UV                       → sclera / outer
+            //
+            // The analytical apparent-pupil-boundary inequality
+            //     r0 * |1 − heightW · _PupilSize · 3|  ≤  R_PUPIL_UV
+            // gives an apparent pupil radius
+            //     r_app = R_PUPIL_UV / |1 − heightW · _PupilSize · 3|
+            // For _PupilSize < 0 this is < R_PUPIL_UV (smaller pupil);
+            // for _PupilSize > 0 it grows.
+            //
+            // To make the visible pupil match r_app *and* avoid bleach
+            // and avoid the rim/seam from prior reroute schemes, we do a
+            // piecewise *radial* remap of the texture sample point:
+            //
+            //   r0 ∈ [0,       r_app  ] → masked dark pupil (r_sample
+            //                              irrelevant)
+            //   r0 ∈ [r_app,   R_IRIS ] → linearly stretch iris band so
+            //                              [r_app, R_IRIS] on screen
+            //                              maps to [R_PUPIL, R_IRIS]
+            //                              in texture
+            //   r0 ∈ [R_IRIS,  ∞      ] → sample naturally (r_sample = r0)
+            //
+            // Continuity:
+            // - At r0 = R_IRIS_UV the inside and outside branches both
+            //   sample at r_sample = R_IRIS_UV → no value jump at the
+            //   limbus.
+            // - At r0 = r_app the iris-band branch samples at r_sample
+            //   = R_PUPIL_UV (the texture's natural inner-iris-ring
+            //   colour), which is the colour right next to the texture's
+            //   own dark pupil — so the procedural-dark to iris
+            //   transition reads as a natural pupil-iris boundary.
+            //
+            // Net effect: for negative _PupilSize the iris band is
+            // radially stretched inward to fill the larger screen iris
+            // annulus. No iris colour is ever sampled past R_IRIS_UV
+            // (no bleach to sclera) and no two different texels meet
+            // discontinuously at the apparent boundaries (no rim).
+            const float R_PUPIL_UV = 0.0788;
+            const float R_IRIS_UV  = 0.1385;
 
-            // The pupil mask AND the iris sampling both work in the
-            // *un-refracted* mesh-UV coordinate system. Earlier
-            // implementations split the two: pupil mask was driven by
-            // post-refraction `uv` while iris samples were rerouted using
-            // un-refracted `d0`. Those two coordinate systems differ
-            // wherever refraction is non-trivial (off-axis, near the
-            // cornea apex), and the procedural-pupil/rerouted-iris
-            // boundary fell on the post-refraction circle while the
-            // rerouted iris colours used un-refracted angular positions
-            // — leaving a visible "ring" between inner and outer iris
-            // colour bands.
-            //
-            // Unifying on un-refracted UV makes the boundary trivially
-            // continuous: a single `uv_iris = 0.5 + dir0 * max(r0, ...)`
-            // formula serves both inside and outside the pupil. The
-            // pupil mask boundary lies on the same un-refracted circle
-            // the iris samples follow, so they line up perfectly.
-            //
-            // Trade-off: the iris loses the lateral refraction shift
-            // (the cornea's lens-like sideways displacement of the iris
-            // texture). For an on-axis camera that shift is small and
-            // largely radially symmetric — barely noticeable — and well
-            // worth losing to fix the boundary artifact. The cornea's
-            // apparent-pupil-deformation factor `heightW * _PupilSize *
-            // 3` still depends on the cornea bulge geometry (heightW),
-            // so apparent pupil size still tracks the analytical model.
-            const float REROUTE_EPSILON = 0.005;
             float2 d0 = IN.uv_MainTex - float2(0.5, 0.5);
             float r0 = length(d0);
             float2 dir0 = (r0 > 1e-5) ? (d0 / r0) : float2(1.0, 0.0);
 
             float pupil_factor = abs(1.0 - heightW * _PupilSize * 3.0);
-            float pupil_score = r0 * pupil_factor;
-            float pupil_mask = 1.0 - smoothstep(R_PUPIL_UV - 0.004,
-                                                 R_PUPIL_UV + 0.004,
-                                                 pupil_score);
+            float r_app = R_PUPIL_UV / max(pupil_factor, 0.001);
 
-            // Iris sample radius = un-refracted radius, clamped to ≥
-            // R_PUPIL_UV + ε so we never sample inside the texture's
-            // natural pupil disk. At the boundary r0 = R_PUPIL_UV the
-            // formula reduces to the same point on either side, so the
-            // transition is continuous.
-            float r_iris = max(r0, R_PUPIL_UV + REROUTE_EPSILON);
-            float2 uv_iris = float2(0.5, 0.5) + dir0 * r_iris;
+            // Piecewise radial sample radius.
+            float r_sample;
+            if (r0 < R_IRIS_UV) {
+                float t = saturate((r0 - r_app) /
+                                   max(R_IRIS_UV - r_app, 0.001));
+                r_sample = R_PUPIL_UV + (R_IRIS_UV - R_PUPIL_UV) * t;
+            } else {
+                r_sample = r0;
+            }
+
+            // Reconstruct the iris UV (preserve angular direction; reapply
+            // the lateral refraction shift the same way the original
+            // post-refraction `uv` does).
+            float2 uv_iris = float2(0.5, 0.5) + dir0 * r_sample;
+            uv_iris += float2(-1.0, 1.0) * offsetL2 * float2(24.0, 24.0);
+
             float4 irisColor = tex2D(_MainTex, uv_iris);
+
+            // Procedural pupil mask: dark inside r0 < r_app, smooth
+            // edge over a fixed half-width to anti-alias.
+            float pupil_mask = 1.0 - smoothstep(r_app - 0.003,
+                                                 r_app + 0.003,
+                                                 r0);
             const float4 pupilColor = float4(0.02, 0.02, 0.02, 1.0);
             float4 eyeColor = lerp(irisColor, pupilColor, pupil_mask);
             
