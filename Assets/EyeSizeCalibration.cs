@@ -35,12 +35,14 @@ using UnityEngine;
 //
 // Constants below come from the Phase 1 mesh probe (iris ring + ellipsoid
 // fit) and the Phase 2 texture pupil-radius probe across the project's
-// five iris textures (range 0.0688 – 0.0788; median 0.0688 used here).
+// five iris textures (range 0.0688 – 0.0788, ~14% spread).
 //
-// Texture-driven variation: switching iris textures introduces ~14% spread
-// in r_pupil_uv → up to ~0.5 mm variation in apparent pupil at the same
-// `_PupilSize`. The calibration uses the median value, so the mapping is
-// accurate to within roughly that margin across the texture set.
+// The calibration is anchored to `eyeball_brown` (r_pupil_uv = 0.0788),
+// the texture EyeballController.RandomizeEyeball picks 50% of the time.
+// Switching to one of the other four textures introduces up to ~0.5 mm
+// of additional variation in apparent pupil diameter at the same
+// `_PupilSize` — pin the texture (e.g. via SetTexture) for fully
+// deterministic millimetre output.
 //
 // Refraction caveat: the shader applies a refraction-driven UV offset
 // before the pupil shift. For an on-axis camera looking at the eye
@@ -59,11 +61,9 @@ public static class EyeSizeCalibration
     public const float IRIS_RING_RADIUS_M  = 0.005870f;   // mesh-local meters
     public const float IRIS_RING_UV_RADIUS = 0.1385f;     // UV-space radius
 
-    // Texture probe. The runtime picks eyeball_brown 50% of the time
-    // (EyeballController.RandomizeEyeball line 100) and one of the five
-    // iris textures otherwise. Using eyeball_brown's specific value
-    // (0.0788) matches the dominant texture; the spread across the full
-    // set is 0.0688–0.0788 (≈14%, or ±0.5 mm at 6 mm nominal pupil).
+    // Texture probe — anchored to eyeball_brown (the texture
+    // EyeballController.RandomizeEyeball picks 50% of the time). See
+    // header comment for the texture-set spread.
     public const float PUPIL_TEXTURE_UV_RADIUS = 0.0788f;
 
     // Eyeball ellipsoid constants from EyeballRadiusProbe (mesh meters).
@@ -72,12 +72,17 @@ public static class EyeSizeCalibration
     const float CORNEA_OFFSET_M = 0.0109f;
     const float LOSSY_SCALE     = 100f;       // mesh m → world cm (probe-confirmed)
 
-    // Useful clamp range for mm input. The lower bound was 4.0 mm
-    // before the EyeShader was patched (procedural pupil mask, see
-    // Assets/Eyeball/EyeShader.shader and docs/iris-pupil-mm-calibration.md);
-    // since the shader no longer bleaches the iris at extreme negative
-    // _PupilSize, the lower bound is now set by the analytical model's
-    // tested floor (_PupilSize ≈ -3.0 → 2.78 mm).
+    // Supported clamp range for mm input. The lower bound was 4.0 mm
+    // before the EyeShader was patched (see Assets/Eyeball/EyeShader.shader
+    // and docs/iris-pupil-mm-calibration.md); since the radial-stretch
+    // shader no longer bleaches the iris at extreme negative _PupilSize,
+    // the lower bound is now set by the analytical model's saturation
+    // floor at the bisection's most-negative bound:
+    //     forward(_PupilSize = -3.5) ≈ 2.52 mm
+    // Inputs below 2.5 mm are clamped at JSON load (SynthesEyesServer);
+    // inputs above 8.7 mm exceed the analytical reach and are similarly
+    // clamped. The SynthesEyesServer reader logs a Debug.LogWarning when
+    // clamping fires so the user is told the JSON value didn't survive.
     public const float PUPIL_MM_MIN = 2.5f;
     public const float PUPIL_MM_MAX = 8.7f;
 
@@ -110,15 +115,18 @@ public static class EyeSizeCalibration
     }
 
     // ---- Pupil: inverse (mm → PupilSize) via bisection ----
-    // The forward function is monotonic in `pupilSize` over the domain
-    // [-1.5, +1.0]; bisect to within 1e-4 mm.
+    // The forward function is monotonic over the bisection bounds
+    // [-3.5, +1.5] (it stays monotonic past +1.5 too, but the apparent
+    // pupil reaches PUPIL_MM_MAX before then). Outside [-3.5, +1.5] the
+    // factor `1 − heightW · ps · 3` eventually crosses zero and the
+    // forward function turns non-monotonic, but those values aren't
+    // physically meaningful and aren't reachable from the supported
+    // mm input range. Bisects to within 1e-6 of `_PupilSize`.
     public static float PupilDiameterMmToPupilSize(float mm)
     {
-        // Bisection bounds. The shader (post procedural-mask patch)
-        // renders cleanly for all _PupilSize, but the analytical model
-        // saturates near _PupilSize ≈ -3.5 (apparent pupil approaches a
-        // floor as the cornea-apex factor maxes out). Search a wider
-        // negative range than before to bracket small-mm inputs.
+        // Bisection bounds. forward(-3.5) ≈ 2.52 mm sets the achievable
+        // mm floor; PUPIL_MM_MIN = 2.5 mm is set just at this floor.
+        // forward(+1.5) ≈ 9.41 mm is comfortably above PUPIL_MM_MAX = 8.7.
         float lo = -3.5f, hi = 1.5f;
         for (int i = 0; i < 60; i++)
         {
