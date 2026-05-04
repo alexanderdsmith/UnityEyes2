@@ -94,6 +94,19 @@ Probed once from the project's data and hard-coded in
 
 ![Apparent pupil diameter vs `_PupilSize`](figures/pupil-calibration.png)
 
+A higher-resolution version with the JSON `pupil_diameter_mm` targets
+explicitly marked is in `figures/pupil-mm-vs-pupilsize.png`:
+
+![Pupil mm ↔ \_PupilSize, JSON targets highlighted](figures/pupil-mm-vs-pupilsize.png)
+
+How a fragment decides "pupil or iris" — the geometric chain — is
+diagrammed in `figures/pupil-determination-diagram.png`: cornea
+ellipsoid + `heightW(r)` (panel a), per-fragment boundary curves with
+`r_app` markers (panel b), and the apparent-pupil circles drawn back
+in texture UV space (panel c).
+
+![How the apparent pupil edge is determined](figures/pupil-determination-diagram.png)
+
 The curve is monotonic and mildly S-shaped: slope steepens around
 `p = 0` and flattens at the extremes, so a linear approximation
 underfits at the small-pupil end. Selected sample points:
@@ -173,22 +186,20 @@ Net behaviour:
   *radially compressed* into a thinner screen annulus. The limbus
   stays anchored at `R_iris_uv`.
 
-![Shader fix: before vs after](figures/pupil-shader-fix.png)
+![Shader fix: before vs after — current radial-stretch
+shader](figures/pupil-shader-bleach-fix.png)
 
-Top row is the original shader, bottom row is the patched shader, both
-rendered at identical `_PupilSize` values from +1.0 down to −3.0. The
-predicted pupil diameter (analytical model) is shown above each column.
-After the patch the iris stays colored, the procedural pupil shrinks
-smoothly across the full range, and `PUPIL_MM_MIN` can drop from 4.0 mm
-(the original shader's safe floor) to 2.5 mm (well inside the
+Top row is the original UV-shift shader, bottom row is the current
+radial-stretch shader, both rendered at identical `_PupilSize` values
+from +1.0 down to −3.0 with iris texture pinned to `eyeball_brown`.
+After the patch the iris stays coloured across the full sweep, the
+apparent pupil shrinks monotonically, and `PUPIL_MM_MIN` can drop from
+4.0 mm (the original shader's safe floor) to 2.5 mm (well inside the
 photopic-constricted physiological range).
 
-(The figure was generated against an earlier procedural-mask-only
-iteration of the patch. The current radial-stretch shader has the same
-no-bleach property and the same monotone pupil-diameter behaviour, plus
-the extra property that the *visible* pupil edge tracks `r_app`
-directly rather than being clamped at the texture's natural pupil disk
-for negative `_PupilSize`.)
+(`figures/pupil-shader-fix.png` is an earlier version of the same
+side-by-side, generated against the procedural-mask-only iteration of
+the patch — kept for history.)
 
 The patch is a single block in `Assets/Eyeball/EyeShader.shader` and
 preserves the existing iris/sclera luminance detection, refraction
@@ -319,4 +330,7 @@ All 38 assertions passed.
 | `docs/figures/pupil-calibration.png` | the apparent-diameter figure |
 | `docs/figures/pupil-calibration-sweep.csv` | numerical sweep data |
 | `docs/figures/pupil-artifact-strip.png` | original shader's iris-bleach regime, kept for context |
-| `docs/figures/pupil-shader-fix.png` | side-by-side before/after of the shader patch |
+| `docs/figures/pupil-shader-fix.png` | side-by-side before/after of the procedural-mask iteration (history) |
+| `docs/figures/pupil-shader-bleach-fix.png` | side-by-side before/after of the current radial-stretch shader |
+| `docs/figures/pupil-mm-vs-pupilsize.png` | mm ↔ `_PupilSize` curve with JSON targets highlighted |
+| `docs/figures/pupil-determination-diagram.png` | three-panel geometry/UV diagram of how the apparent pupil edge is determined |
