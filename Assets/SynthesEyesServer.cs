@@ -277,7 +277,34 @@ public class SynthesEyesServer : MonoBehaviour{
                 JSONNode eyeParamsNode = rootNode["eye_parameters"];
                 eyeParameters = new EyeParameters();
 
-                if (eyeParamsNode["pupil_size_range"] != null)
+                // Pupil: prefer the physical-mm field if present; fall
+                // back to the legacy dimensionless `_PupilSize` multiplier.
+                if (eyeParamsNode["pupil_diameter_mm_range"] != null)
+                {
+                    Vector2 mmRange = new Vector2(
+                        eyeParamsNode["pupil_diameter_mm_range"]["min"].AsFloat,
+                        eyeParamsNode["pupil_diameter_mm_range"]["max"].AsFloat);
+                    Vector2 mmClamped = new Vector2(
+                        Mathf.Clamp(mmRange.x,
+                            EyeSizeCalibration.PUPIL_MM_MIN,
+                            EyeSizeCalibration.PUPIL_MM_MAX),
+                        Mathf.Clamp(mmRange.y,
+                            EyeSizeCalibration.PUPIL_MM_MIN,
+                            EyeSizeCalibration.PUPIL_MM_MAX));
+                    if (mmClamped != mmRange)
+                    {
+                        Debug.LogWarning(
+                            $"pupil_diameter_mm_range [{mmRange.x:F2}, {mmRange.y:F2}] mm " +
+                            $"out of supported range " +
+                            $"[{EyeSizeCalibration.PUPIL_MM_MIN:F2}, {EyeSizeCalibration.PUPIL_MM_MAX:F2}] mm; " +
+                            $"clamped to [{mmClamped.x:F2}, {mmClamped.y:F2}] mm");
+                    }
+                    eyeParameters.pupilSizeRange =
+                        EyeSizeCalibration.PupilDiameterMmRangeToPupilSizeRange(mmClamped);
+                    Debug.Log($"  pupil_diameter_mm_range [{mmClamped.x:F2}, {mmClamped.y:F2}] mm " +
+                              $"→ _PupilSize [{eyeParameters.pupilSizeRange.x:F4}, {eyeParameters.pupilSizeRange.y:F4}]");
+                }
+                else if (eyeParamsNode["pupil_size_range"] != null)
                 {
                     eyeParameters.pupilSizeRange = new Vector2(
                         eyeParamsNode["pupil_size_range"]["min"].AsFloat,
@@ -285,7 +312,19 @@ public class SynthesEyesServer : MonoBehaviour{
                     );
                 }
 
-                if (eyeParamsNode["iris_size_range"] != null)
+                // Iris: prefer the physical-mm field if present; fall back
+                // to the legacy dimensionless `irisSize` multiplier.
+                if (eyeParamsNode["iris_diameter_mm_range"] != null)
+                {
+                    Vector2 mmRange = new Vector2(
+                        eyeParamsNode["iris_diameter_mm_range"]["min"].AsFloat,
+                        eyeParamsNode["iris_diameter_mm_range"]["max"].AsFloat);
+                    eyeParameters.irisSizeRange =
+                        EyeSizeCalibration.IrisDiameterMmRangeToIrisSizeRange(mmRange);
+                    Debug.Log($"  iris_diameter_mm_range [{mmRange.x:F2}, {mmRange.y:F2}] mm " +
+                              $"→ irisSize [{eyeParameters.irisSizeRange.x:F4}, {eyeParameters.irisSizeRange.y:F4}]");
+                }
+                else if (eyeParamsNode["iris_size_range"] != null)
                 {
                     eyeParameters.irisSizeRange = new Vector2(
                         eyeParamsNode["iris_size_range"]["min"].AsFloat,
