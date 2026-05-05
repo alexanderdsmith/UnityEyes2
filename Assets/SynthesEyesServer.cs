@@ -815,20 +815,20 @@ public class SynthesEyesServer : MonoBehaviour{
                 if (i >= lightsArray.Count) continue;
 
                 JSONNode lightNode = lightsArray[i];
-                JSONNode lightExtrinsicsNoise = lightNode["extrinsics_noise"];
+                JSONNode lightPositionNoiseNode = lightNode["position_noise"];
 
-                if (lightExtrinsicsNoise != null)
+                if (lightPositionNoiseNode != null)
                 {
                     Vector3 lightPositionNoise = new Vector3(
-                        lightExtrinsicsNoise["x"] != null ? lightExtrinsicsNoise["x"].AsFloat : 0f,
-                        lightExtrinsicsNoise["y"] != null ? lightExtrinsicsNoise["y"].AsFloat : 0f,
-                        lightExtrinsicsNoise["z"] != null ? lightExtrinsicsNoise["z"].AsFloat : 0f
+                        lightPositionNoiseNode["x"] != null ? lightPositionNoiseNode["x"].AsFloat : 0f,
+                        lightPositionNoiseNode["y"] != null ? lightPositionNoiseNode["y"].AsFloat : 0f,
+                        lightPositionNoiseNode["z"] != null ? lightPositionNoiseNode["z"].AsFloat : 0f
                     );
 
                     Vector3 lightRotationNoise = new Vector3(
-                        lightExtrinsicsNoise["rx"] != null ? lightExtrinsicsNoise["rx"].AsFloat : 0f,
-                        lightExtrinsicsNoise["ry"] != null ? lightExtrinsicsNoise["ry"].AsFloat : 0f,
-                        lightExtrinsicsNoise["rz"] != null ? lightExtrinsicsNoise["rz"].AsFloat : 0f
+                        lightPositionNoiseNode["rx"] != null ? lightPositionNoiseNode["rx"].AsFloat : 0f,
+                        lightPositionNoiseNode["ry"] != null ? lightPositionNoiseNode["ry"].AsFloat : 0f,
+                        lightPositionNoiseNode["rz"] != null ? lightPositionNoiseNode["rz"].AsFloat : 0f
                     );
 
                     float lightOffsetX = GetRandomOffset(lightPositionNoise.x * 100f); 
