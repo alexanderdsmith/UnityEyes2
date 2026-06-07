@@ -192,12 +192,12 @@
             ], 
           "eye_parameters": { 
             "pupil_diameter_mm_range": { 
-              "min": -1, 
-              "max": 0.7
+              "min": 2, 
+              "max": 8
               }, 
             "iris_diameter_mm_range": { 
-              "min": 0.9, 
-              "max": 1
+              "min": 10, 
+              "max": 13
               }, 
             "default_yaw": 0, 
             "default_pitch": 0, 

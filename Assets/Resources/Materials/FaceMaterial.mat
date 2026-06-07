@@ -40,7 +40,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpTex:
-        m_Texture: {fileID: 2800000, guid: 0e9f78103c466fb41a5f16de1cf4b604, type: 3}
+        m_Texture: {fileID: 2800000, guid: fea93e2e51b81154ba067cf04ec77d27, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpTexDetail:
@@ -284,11 +284,11 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex2dColor:
-        m_Texture: {fileID: 2800000, guid: 78e789d45da43ad4db794b098c8cf61e, type: 3}
+        m_Texture: {fileID: 2800000, guid: c13212ac252faa2499c00e1963ba771f, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex2dColorLd:
-        m_Texture: {fileID: 2800000, guid: 65ea15a051adb934c893d01e9ea9b0b9, type: 3}
+        m_Texture: {fileID: 2800000, guid: 62e66aba46f54ae4fab00ae9122f925e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _Tex3dBump:
@@ -326,7 +326,7 @@ Material:
     - _DstBlend: 0
     - _Fresnel: 5
     - _Glossiness: 0.5
-    - _LookDownNess: 0.11730811
+    - _LookDownNess: 0.07636768
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
