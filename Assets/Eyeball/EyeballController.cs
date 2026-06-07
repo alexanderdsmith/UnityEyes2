@@ -96,6 +96,13 @@ public class EyeballController : MonoBehaviour {
 
         float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
         eyeMaterial.SetFloat("_PupilSize", pupilSize);
+        // Compute the apparent pupil radius in UV space from the calibration and
+        // pass it directly to the shader — avoids the heightW-division blowup.
+        float pupilDiamMm = EyeSizeCalibration.PupilSizeToPupilDiameterMm(pupilSize);
+        // UV_PER_MM = IRIS_RING_UV_RADIUS / (IRIS_RING_RADIUS_M * LOSSY_SCALE * 10)
+        //           = 0.1385 / (0.005870 * 100 * 10) = 0.023596
+        float pupilRadiusUV = Mathf.Clamp(pupilDiamMm * 0.5f * 0.023596f, 0.005f, 0.1335f);
+        eyeMaterial.SetFloat("_PupilRadiusUV", pupilRadiusUV);
 
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);
         else eyeMaterial.SetTexture("_MainTex", colorTexs[Random.Range(0, colorTexs.Count)]);

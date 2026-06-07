@@ -9,6 +9,7 @@ Shader "EyeShader" {
         _GlossTex ("Glossiness", 2D) = "white" {}
         _RefractiveIdx ("Refractive index", Range(1,2)) = 1.3
         _PupilSize ("Pupil size change", Range(-1,1)) = 0
+        _PupilRadiusUV ("Pupil apparent radius (UV units)", Range(0,0.15)) = 0.04
         _Metallic ("Metallic", Range(0,1)) = 0.01       // Slightly reduced to avoid washing out
         _Glossiness ("Smoothness", Range(0,1)) = 0.95   // Increased for more reflectivity
         _ReflectionIntensity ("Reflection Intensity", Range(0,1)) = 0.9  // Increased
@@ -41,7 +42,7 @@ Shader "EyeShader" {
         sampler2D _MainTex;
         sampler2D _BumpTex;
         sampler2D _GlossTex;
-        float _RefractiveIdx, _PupilSize;
+        float _RefractiveIdx, _PupilSize, _PupilRadiusUV;
         float _Metallic;
         float _Glossiness;
         float _ReflectionIntensity;
@@ -85,47 +86,13 @@ Shader "EyeShader" {
             float2 uv = IN.uv_MainTex;
             uv += float2(-1.0, 1.0)*offsetL2 * float2(24,24);
             
-            // Pupil rendering: procedural mask + radial iris-band remap.
+            // Unified piecewise radial remap — no flat pupilColor.
+            // Darkness in the pupil area comes from the texture itself, so
+            // the cornea dome gets a textured pupil with no hard black circle.
             //
-            // Texture layout (constants from mesh + texture probes):
-            //   r in [0,                R_PUPIL_UV] → natural texture pupil
-            //   r in [R_PUPIL_UV,       R_IRIS_UV ] → natural iris band
-            //   r >  R_IRIS_UV                       → sclera / outer
-            //
-            // The analytical apparent-pupil-boundary inequality
-            //     r0 * |1 − heightW · _PupilSize · 3|  ≤  R_PUPIL_UV
-            // gives an apparent pupil radius
-            //     r_app = R_PUPIL_UV / |1 − heightW · _PupilSize · 3|
-            // For _PupilSize < 0 this is < R_PUPIL_UV (smaller pupil);
-            // for _PupilSize > 0 it grows.
-            //
-            // To make the visible pupil match r_app *and* avoid bleach
-            // and avoid the rim/seam from prior reroute schemes, we do a
-            // piecewise *radial* remap of the texture sample point:
-            //
-            //   r0 ∈ [0,       r_app  ] → masked dark pupil (r_sample
-            //                              irrelevant)
-            //   r0 ∈ [r_app,   R_IRIS ] → linearly stretch iris band so
-            //                              [r_app, R_IRIS] on screen
-            //                              maps to [R_PUPIL, R_IRIS]
-            //                              in texture
-            //   r0 ∈ [R_IRIS,  ∞      ] → sample naturally (r_sample = r0)
-            //
-            // Continuity:
-            // - At r0 = R_IRIS_UV the inside and outside branches both
-            //   sample at r_sample = R_IRIS_UV → no value jump at the
-            //   limbus.
-            // - At r0 = r_app the iris-band branch samples at r_sample
-            //   = R_PUPIL_UV (the texture's natural inner-iris-ring
-            //   colour), which is the colour right next to the texture's
-            //   own dark pupil — so the procedural-dark to iris
-            //   transition reads as a natural pupil-iris boundary.
-            //
-            // Net effect: for negative _PupilSize the iris band is
-            // radially stretched inward to fill the larger screen iris
-            // annulus. No iris colour is ever sampled past R_IRIS_UV
-            // (no bleach to sclera) and no two different texels meet
-            // discontinuously at the apparent boundaries (no rim).
+            //   r0 ∈ [0,       r_app    ] → texture pupil  [0, R_PUPIL_UV]
+            //   r0 ∈ [r_app,   R_IRIS_UV] → texture iris   [R_PUPIL_UV, R_IRIS_UV]
+            //   r0 >  R_IRIS_UV           → sclera (natural)
             const float R_PUPIL_UV = 0.0788;
             const float R_IRIS_UV  = 0.1385;
 
@@ -133,34 +100,28 @@ Shader "EyeShader" {
             float r0 = length(d0);
             float2 dir0 = (r0 > 1e-5) ? (d0 / r0) : float2(1.0, 0.0);
 
-            float pupil_factor = abs(1.0 - heightW * _PupilSize * 3.0);
-            float r_app = R_PUPIL_UV / max(pupil_factor, 0.001);
+            // r_app: apparent pupil radius in UV space, computed in C# by
+            // EyeSizeCalibration.PupilSizeToPupilDiameterMm and passed via
+            // _PupilRadiusUV. This avoids the heightW-dependent division that
+            // blows up and produces a black circle at extreme _PupilSize values.
+            float r_app = clamp(_PupilRadiusUV, 0.005, R_IRIS_UV - 0.005);
 
-            // Piecewise radial sample radius.
             float r_sample;
-            if (r0 < R_IRIS_UV) {
-                float t = saturate((r0 - r_app) /
-                                   max(R_IRIS_UV - r_app, 0.001));
+            if (r0 < r_app) {
+                // Scale screen pupil disk [0, r_app] → texture pupil [0, R_PUPIL_UV]
+                r_sample = r0 * (R_PUPIL_UV / max(r_app, 0.001));
+            } else if (r0 < R_IRIS_UV) {
+                // Stretch iris band to fill [r_app, R_IRIS_UV]
+                float t = saturate((r0 - r_app) / max(R_IRIS_UV - r_app, 0.001));
                 r_sample = R_PUPIL_UV + (R_IRIS_UV - R_PUPIL_UV) * t;
             } else {
                 r_sample = r0;
             }
 
-            // Reconstruct the iris UV (preserve angular direction; reapply
-            // the lateral refraction shift the same way the original
-            // post-refraction `uv` does).
             float2 uv_iris = float2(0.5, 0.5) + dir0 * r_sample;
             uv_iris += float2(-1.0, 1.0) * offsetL2 * float2(24.0, 24.0);
 
-            float4 irisColor = tex2D(_MainTex, uv_iris);
-
-            // Procedural pupil mask: dark inside r0 < r_app, smooth
-            // edge over a fixed half-width to anti-alias.
-            float pupil_mask = 1.0 - smoothstep(r_app - 0.003,
-                                                 r_app + 0.003,
-                                                 r0);
-            const float4 pupilColor = float4(0.02, 0.02, 0.02, 1.0);
-            float4 eyeColor = lerp(irisColor, pupilColor, pupil_mask);
+            float4 eyeColor = tex2D(_MainTex, uv_iris);
             
             // Determine if we're on the iris/pupil vs. the sclera (white part)
             // by checking color luminance - darker areas are iris/pupil

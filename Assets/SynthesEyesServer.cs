@@ -146,7 +146,8 @@ public class SynthesEyesServer : MonoBehaviour{
             visualizationManager.synthesEyesServer = this;
         }
 
-        // Load cameras from JSON
+        // Load cameras from JSON, or fall back to a default scene so 'c' and 'r'
+        // work immediately without requiring a config file.
         if (File.Exists(jsonConfigPath))
         {
             LoadCamerasFromConfig(jsonConfigPath);
@@ -165,6 +166,71 @@ public class SynthesEyesServer : MonoBehaviour{
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
             }
         }
+        else
+        {
+            StartCoroutine(InitializeDefaultScene());
+        }
+    }
+
+    /// <summary>
+    /// Bootstraps a fully usable scene when no JSON config is present.
+    /// Runs as a coroutine so it waits one frame after Start(), giving
+    /// EyeballController time to capture iris_start_pos before we call
+    /// RandomizeEyeball (avoids the zeroed-vertex iris glitch).
+    ///
+    /// Camera.main is intentionally NOT added to cameraList — CleanupCurrentScene
+    /// destroys everything in that list, which would kill the renderer. Instead,
+    /// RandomizeScene skips camera positioning when cameraList is empty and only
+    /// randomizes gaze; the full camera pipeline kicks in after a config is loaded.
+    ///
+    /// Iris range comes from MenuController's UI values (mm).
+    /// Pupil: clamped 1–8 mm.  Yaw ±20°.  Pitch ±15°.
+    /// </summary>
+    private IEnumerator InitializeDefaultScene()
+    {
+        // Wait one frame so every MonoBehaviour.Start() has finished.
+        yield return null;
+
+        // Pupil: read from MenuController so it matches the UI, then convert mm → raw.
+        Vector2 pupilMmRange = new Vector2(
+            Mathf.Clamp(1.0f, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX),
+            Mathf.Clamp(8.0f, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX));
+        eyeball.SetPupilSizeRange(EyeSizeCalibration.PupilDiameterMmRangeToPupilSizeRange(pupilMmRange));
+
+        // Iris: read the mm values directly from MenuController (UI is the source of truth).
+        // MenuController stores iris in mm; convert here exactly as SynthesEyesServer does
+        // when loading iris_diameter_mm_range from JSON.
+        MenuController menuController = FindFirstObjectByType<MenuController>();
+        if (menuController != null &&
+            menuController.eyeParameterValues.TryGetValue("IrisSize", out var irisVals))
+        {
+            float irisMinMm = irisVals.ContainsKey("min") ? irisVals["min"] : 10.0f;
+            float irisMaxMm = irisVals.ContainsKey("max") ? irisVals["max"] : 13.0f;
+            eyeball.SetIrisSizeRange(
+                EyeSizeCalibration.IrisDiameterMmRangeToIrisSizeRange(new Vector2(irisMinMm, irisMaxMm)));
+            Debug.Log($"[Default scene] Iris {irisMinMm:F1}–{irisMaxMm:F1} mm (from UI).");
+        }
+        else
+        {
+            // Fallback if MenuController isn't in the scene.
+            eyeball.SetIrisSizeRange(
+                EyeSizeCalibration.IrisDiameterMmRangeToIrisSizeRange(new Vector2(10.0f, 13.0f)));
+            Debug.LogWarning("[Default scene] MenuController not found; using hardcoded iris 10–13 mm.");
+        }
+
+        // Gaze noise — used by RandomizeScene when eyeParameters is null.
+        eyeYawNoise   = 15f;
+        eyePitchNoise = 20f;
+        defaultEyeYaw   = 0f;
+        defaultEyePitch = 0f;
+
+        Debug.Log($"[Default scene] Pupil {pupilMmRange.x:F1}–{pupilMmRange.y:F1} mm, " +
+                  $"Yaw ±{eyeYawNoise}°, Pitch ±{eyePitchNoise}°");
+
+        // Initial randomize — iris_start_pos is now safely populated.
+        eyeball.RandomizeEyeball();
+        eyeRegion.RandomizeAppearance();
+        RandomizeScene();
     }
 
 
@@ -754,6 +820,12 @@ public class SynthesEyesServer : MonoBehaviour{
 
     void RandomizeScene()
     {
+        if (eyeball == null)
+        {
+            Debug.LogWarning("RandomizeScene: eyeball not ready.");
+            return;
+        }
+
         if (randomizeSceneCallCount == 0)
         {
             randomizeSceneStartTime = Time.time;
@@ -770,7 +842,11 @@ public class SynthesEyesServer : MonoBehaviour{
 
         eyeball.SetEyeRotation(randomYaw, randomPitch);
 
-        if (useMotionCenter)
+        // Camera positioning only applies when a config has been loaded with cameras.
+        if (cameraList == null || cameraList.Count == 0)
+            return;
+
+        if (useMotionCenter && cameraParent != null)
         {
             float offsetX = GetRandomOffset(cameraArrayPositionNoise.x);
             float offsetY = GetRandomOffset(cameraArrayPositionNoise.y);

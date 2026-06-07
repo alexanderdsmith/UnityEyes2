@@ -329,6 +329,23 @@ public class MenuController : MonoBehaviour
         if (saveButton != null)
         {
             saveButton.onClick.AddListener(SaveConfiguration);
+
+            // Duplicate the existing red ExitButton next to the save button
+            // so the user can close settings without scrolling back to the top.
+            if (closeButton != null)
+            {
+                GameObject closeNearSave = Instantiate(closeButton.gameObject, saveButton.transform.parent);
+                closeNearSave.name = "CloseSettingsButton";
+                RectTransform rt = closeNearSave.GetComponent<RectTransform>();
+                RectTransform saveRT = saveButton.GetComponent<RectTransform>();
+                if (rt != null && saveRT != null)
+                    rt.sizeDelta = new Vector2(saveRT.sizeDelta.x, saveRT.sizeDelta.y * 1.8f);
+                TMP_Text label = closeNearSave.GetComponentInChildren<TMP_Text>();
+                if (label != null) label.text = "Close Settings";
+                Button btn = closeNearSave.GetComponent<Button>();
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(CloseMenu);
+            }
         }
 
         if (helpButton != null)
@@ -1316,18 +1333,18 @@ public class MenuController : MonoBehaviour
     private void InitializeEyeParameterValues()
     {
         eyeParameterValues["PupilSize"] = new Dictionary<string, float>();
-        eyeParameterValues["PupilSize"]["min"] = 0.2f;
-        eyeParameterValues["PupilSize"]["max"] = 0.8f;
+        eyeParameterValues["PupilSize"]["min"] = 3.0f; // mm
+        eyeParameterValues["PupilSize"]["max"] = 9.0f; // mm
 
         eyeParameterValues["IrisSize"] = new Dictionary<string, float>();
-        eyeParameterValues["IrisSize"]["min"] = 0.9f;
-        eyeParameterValues["IrisSize"]["max"] = 1.0f;
+        eyeParameterValues["IrisSize"]["min"] = 10.0f;  // mm
+        eyeParameterValues["IrisSize"]["max"] = 13.0f;  // mm
 
         eyeParameterValues["EyeProperties"] = new Dictionary<string, float>();
         eyeParameterValues["EyeProperties"]["pitch"] = 0f;
         eyeParameterValues["EyeProperties"]["yaw"] = 0f;
-        eyeParameterValues["EyeProperties"]["pitchnoise"] = 30f;
-        eyeParameterValues["EyeProperties"]["yawnoise"] = 30f;
+        eyeParameterValues["EyeProperties"]["pitchnoise"] = 60f;
+        eyeParameterValues["EyeProperties"]["yawnoise"] = 45f;
     }
 
     private void InitializeEyeParameterInputFields()
@@ -1536,9 +1553,9 @@ public class MenuController : MonoBehaviour
         if (string.IsNullOrEmpty(value) || !float.TryParse(value, out parsedValue))
         {
             if (paramName == "PupilSize")
-                parsedValue = 0.2f;
+                parsedValue = 6.0f; // mm, midpoint of 3–9 range
             else if (paramName == "IrisSize")
-                parsedValue = 10.0f;
+                parsedValue = 11.2f;  // mm midpoint of default range
             else
                 parsedValue = 0f;
 
@@ -2010,48 +2027,49 @@ public class MenuController : MonoBehaviour
 
         // TODO: Make all of these default values below into dynamic variables.
 
+        // Export in mm — SynthesEyesServer converts via EyeSizeCalibration.
         JSONNode pupilSizeRangeNode = new JSONClass();
         if (eyeParameterValues.ContainsKey("PupilSize"))
         {
             var pupilSizeValues = eyeParameterValues["PupilSize"];
-            pupilSizeRangeNode.Add("min", new JSONData(pupilSizeValues.ContainsKey("min") ? pupilSizeValues["min"] : 0.2f));
-            pupilSizeRangeNode.Add("max", new JSONData(pupilSizeValues.ContainsKey("max") ? pupilSizeValues["max"] : 0.2f));
+            pupilSizeRangeNode.Add("min", new JSONData(pupilSizeValues.ContainsKey("min") ? pupilSizeValues["min"] : 3.0f));
+            pupilSizeRangeNode.Add("max", new JSONData(pupilSizeValues.ContainsKey("max") ? pupilSizeValues["max"] : 9.0f));
         }
         else
         {
-            pupilSizeRangeNode.Add("min", new JSONData(0.2f));
-            pupilSizeRangeNode.Add("max", new JSONData(0.2f));
+            pupilSizeRangeNode.Add("min", new JSONData(3.0f));
+            pupilSizeRangeNode.Add("max", new JSONData(9.0f));
         }
-        eyeParametersNode.Add("pupil_size_range", pupilSizeRangeNode);
+        eyeParametersNode.Add("pupil_diameter_mm_range", pupilSizeRangeNode);
 
         JSONNode irisSizeRangeNode = new JSONClass();
         if (eyeParameterValues.ContainsKey("IrisSize"))
         {
             var irisSizeValues = eyeParameterValues["IrisSize"];
-            irisSizeRangeNode.Add("min", new JSONData(irisSizeValues.ContainsKey("min") ? irisSizeValues["min"] : 10.0f));
-            irisSizeRangeNode.Add("max", new JSONData(irisSizeValues.ContainsKey("max") ? irisSizeValues["max"] : 10.0f));
+            irisSizeRangeNode.Add("min", new JSONData(irisSizeValues.ContainsKey("min") ? irisSizeValues["min"] : 10.6f));
+            irisSizeRangeNode.Add("max", new JSONData(irisSizeValues.ContainsKey("max") ? irisSizeValues["max"] : 11.7f));
         }
         else
         {
-            irisSizeRangeNode.Add("min", new JSONData(10.0f));
-            irisSizeRangeNode.Add("max", new JSONData(10.0f));
+            irisSizeRangeNode.Add("min", new JSONData(10.6f));
+            irisSizeRangeNode.Add("max", new JSONData(11.7f));
         }
-        eyeParametersNode.Add("iris_size_range", irisSizeRangeNode);
+        eyeParametersNode.Add("iris_diameter_mm_range", irisSizeRangeNode);
 
         if (eyeParameterValues.ContainsKey("EyeProperties"))
         {
             var eyeProps = eyeParameterValues["EyeProperties"];
             eyeParametersNode.Add("default_yaw", new JSONData(eyeProps.ContainsKey("yaw") ? eyeProps["yaw"] : 0f));
             eyeParametersNode.Add("default_pitch", new JSONData(eyeProps.ContainsKey("pitch") ? eyeProps["pitch"] : 0f));
-            eyeParametersNode.Add("yaw_noise", new JSONData(eyeProps.ContainsKey("yawnoise") ? eyeProps["yawnoise"] : 20f));
-            eyeParametersNode.Add("pitch_noise", new JSONData(eyeProps.ContainsKey("pitchnoise") ? eyeProps["pitchnoise"] : 15f));
+            eyeParametersNode.Add("yaw_noise", new JSONData(eyeProps.ContainsKey("yawnoise") ? eyeProps["yawnoise"] : 45f));
+            eyeParametersNode.Add("pitch_noise", new JSONData(eyeProps.ContainsKey("pitchnoise") ? eyeProps["pitchnoise"] : 60f));
         }
         else
         {
             eyeParametersNode.Add("default_yaw", new JSONData(0f));
             eyeParametersNode.Add("default_pitch", new JSONData(0f));
-            eyeParametersNode.Add("yaw_noise", new JSONData(20f));
-            eyeParametersNode.Add("pitch_noise", new JSONData(15f));
+            eyeParametersNode.Add("yaw_noise", new JSONData(45f));
+            eyeParametersNode.Add("pitch_noise", new JSONData(60f));
         }
 
         rootNode.Add("eye_parameters", eyeParametersNode);
