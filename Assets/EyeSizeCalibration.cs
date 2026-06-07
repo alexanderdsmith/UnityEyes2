@@ -72,19 +72,15 @@ public static class EyeSizeCalibration
     const float CORNEA_OFFSET_M = 0.0109f;
     const float LOSSY_SCALE     = 100f;       // mesh m → world cm (probe-confirmed)
 
-    // Supported clamp range for mm input. The lower bound was 4.0 mm
-    // before the EyeShader was patched (see Assets/Eyeball/EyeShader.shader
-    // and docs/iris-pupil-mm-calibration.md); since the radial-stretch
-    // shader no longer bleaches the iris at extreme negative _PupilSize,
-    // the lower bound is now set by the analytical model's saturation
-    // floor at the bisection's most-negative bound:
-    //     forward(_PupilSize = -3.5) ≈ 2.52 mm
-    // Inputs below 2.5 mm are clamped at JSON load (SynthesEyesServer);
-    // inputs above 8.7 mm exceed the analytical reach and are similarly
-    // clamped. The SynthesEyesServer reader logs a Debug.LogWarning when
-    // clamping fires so the user is told the JSON value didn't survive.
-    public const float PUPIL_MM_MIN = 2.5f;
-    public const float PUPIL_MM_MAX = 8.7f;
+    // Supported clamp range for mm input.
+    // Lower bound: 1.0 mm. The shader uses _PupilRadiusUV = mm * 0.5 * UV_PER_MM
+    // directly, so there is no zero-crossing issue for negative _PupilSize.
+    // The bisection is extended to lo = -15 to cover the ~-11.6 value needed
+    // for a 1 mm apparent pupil (forward(-11.6) ≈ 1.0 mm).
+    // Upper bound: 9.0 mm → _PupilRadiusUV = 0.1062, safely inside R_IRIS_UV = 0.1385.
+    // The SynthesEyesServer reader logs a Debug.LogWarning when clamping fires.
+    public const float PUPIL_MM_MIN = 1.0f;
+    public const float PUPIL_MM_MAX = 9.0f;
 
     // ---- Iris helpers (linear, exact) ----
     public static float IrisDiameterMmToIrisSize(float mm) =>
@@ -115,19 +111,16 @@ public static class EyeSizeCalibration
     }
 
     // ---- Pupil: inverse (mm → PupilSize) via bisection ----
-    // The forward function is monotonic over the bisection bounds
-    // [-3.5, +1.5] (it stays monotonic past +1.5 too, but the apparent
-    // pupil reaches PUPIL_MM_MAX before then). Outside [-3.5, +1.5] the
-    // factor `1 − heightW · ps · 3` eventually crosses zero and the
-    // forward function turns non-monotonic, but those values aren't
-    // physically meaningful and aren't reachable from the supported
-    // mm input range. Bisects to within 1e-6 of `_PupilSize`.
+    // The forward function is monotonic for all negative ps (factor =
+    // 1 + heightW·|ps|·3 never crosses zero). For positive ps the
+    // zero-crossing occurs near ps ≈ +2, so hi = 1.5 is kept as a safe
+    // ceiling. forward(-15) ≈ 0.3 mm, well below PUPIL_MM_MIN = 1.0 mm.
+    // forward(+1.5) ≈ 9.41 mm is above PUPIL_MM_MAX = 9.0 mm.
+    // Bisects to within 1e-6 of `_PupilSize`.
     public static float PupilDiameterMmToPupilSize(float mm)
     {
-        // Bisection bounds. forward(-3.5) ≈ 2.52 mm sets the achievable
-        // mm floor; PUPIL_MM_MIN = 2.5 mm is set just at this floor.
-        // forward(+1.5) ≈ 9.41 mm is comfortably above PUPIL_MM_MAX = 8.7.
-        float lo = -3.5f, hi = 1.5f;
+        // lo covers ps needed for 1 mm (~-11.6); -15 gives comfortable margin.
+        float lo = -15f, hi = 1.5f;
         for (int i = 0; i < 60; i++)
         {
             float mid = 0.5f * (lo + hi);
