@@ -13,8 +13,9 @@ public class EyeballController : MonoBehaviour {
     public static Vector3[] iris_start_pos = new Vector3[iris_idxs.Length];
     private float irisSize = 1.0f;
 
-    private float pupilSizeMin = 0.2f;
-    private float pupilSizeMax = 0.8f;
+    // Stored in mm so RandomizeEyeball samples uniformly in physical space.
+    private float pupilMmMin = EyeSizeCalibration.PUPIL_MM_MIN;
+    private float pupilMmMax = EyeSizeCalibration.PUPIL_MM_MAX;
     private float irisSizeMin = 0.9f;
     private float irisSizeMax = 1.0f;
 
@@ -55,10 +56,19 @@ public class EyeballController : MonoBehaviour {
 		);
     }
 
+    // range is in internal _PupilSize units (as stored in eyeParameters).
+    // Convert to mm here so RandomizeEyeball can sample uniformly in physical space.
     public void SetPupilSizeRange(Vector2 range)
     {
-        pupilSizeMin = range.x;
-        pupilSizeMax = range.y;
+        pupilMmMin = EyeSizeCalibration.PupilSizeToPupilDiameterMm(range.x);
+        pupilMmMax = EyeSizeCalibration.PupilSizeToPupilDiameterMm(range.y);
+    }
+
+    // Convenience overload that accepts mm directly (avoids a ps→mm roundtrip).
+    public void SetPupilMmRange(Vector2 mmRange)
+    {
+        pupilMmMin = Mathf.Clamp(mmRange.x, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX);
+        pupilMmMax = Mathf.Clamp(mmRange.y, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX);
     }
 
     public void SetIrisSizeRange(Vector2 range)
@@ -94,14 +104,15 @@ public class EyeballController : MonoBehaviour {
         // eyeMaterial.SetFloat("_PupilSize", pupilSize);
         //eyeMaterial.SetFloat("_PupilSize", SyntheseyesUtils.NextGaussianDouble()/5.0f);
 
-        float pupilSize = Random.Range(pupilSizeMin, pupilSizeMax);
+        // Sample uniformly in mm so all sizes are equally probable.
+        // Sampling in _PupilSize space would massively oversample small pupils
+        // because the mm→ps mapping is highly nonlinear near the lower bound.
+        float pupilMm = Random.Range(pupilMmMin, pupilMmMax);
+        float pupilSize = EyeSizeCalibration.PupilDiameterMmToPupilSize(pupilMm);
         eyeMaterial.SetFloat("_PupilSize", pupilSize);
-        // Compute the apparent pupil radius in UV space from the calibration and
-        // pass it directly to the shader — avoids the heightW-division blowup.
-        float pupilDiamMm = EyeSizeCalibration.PupilSizeToPupilDiameterMm(pupilSize);
         // UV_PER_MM = IRIS_RING_UV_RADIUS / (IRIS_RING_RADIUS_M * LOSSY_SCALE * 10)
         //           = 0.1385 / (0.005870 * 100 * 10) = 0.023596
-        float pupilRadiusUV = Mathf.Clamp(pupilDiamMm * 0.5f * 0.023596f, 0.005f, 0.1335f);
+        float pupilRadiusUV = Mathf.Clamp(pupilMm * 0.5f * 0.023596f, 0.005f, 0.1335f);
         eyeMaterial.SetFloat("_PupilRadiusUV", pupilRadiusUV);
 
         if (Random.value > 0.5f) eyeMaterial.SetTexture("_MainTex", colorTexsDict["eyeball_brown"]);

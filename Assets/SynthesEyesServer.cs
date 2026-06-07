@@ -192,10 +192,8 @@ public class SynthesEyesServer : MonoBehaviour{
         yield return null;
 
         // Pupil: read from MenuController so it matches the UI, then convert mm → raw.
-        Vector2 pupilMmRange = new Vector2(
-            Mathf.Clamp(1.0f, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX),
-            Mathf.Clamp(8.0f, EyeSizeCalibration.PUPIL_MM_MIN, EyeSizeCalibration.PUPIL_MM_MAX));
-        eyeball.SetPupilSizeRange(EyeSizeCalibration.PupilDiameterMmRangeToPupilSizeRange(pupilMmRange));
+        Vector2 pupilMmRange = new Vector2(1.0f, 8.0f);
+        eyeball.SetPupilMmRange(pupilMmRange);
 
         // Iris: read the mm values directly from MenuController (UI is the source of truth).
         // MenuController stores iris in mm; convert here exactly as SynthesEyesServer does
