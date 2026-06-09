@@ -472,22 +472,22 @@ public class MenuController : MonoBehaviour
         // Capture current path so we can restore it if the user cancels.
         string previousPath = outputPathTMP != null ? outputPathTMP.text : "";
 
-        string selectedPath = "";
         #if UNITY_EDITOR
-            selectedPath = UnityEditor.EditorUtility.OpenFolderPanel("Select Output Folder", previousPath, "");
+            string selectedPath = UnityEditor.EditorUtility.OpenFolderPanel("Select Output Folder", previousPath, "");
+            ApplySelectedOutputFolder(selectedPath, previousPath);
         #else
-            if (Application.platform == RuntimePlatform.OSXPlayer)
+            // Use async for all standalone platforms — the synchronous versions crash on cancel
+            // on both Linux (GTK) and macOS (Cocoa) when the dialog is dismissed on the main thread.
+            StandaloneFileBrowser.OpenFolderPanelAsync("Select Output Folder", previousPath, false, paths =>
             {
-                selectedPath = MacNativeFileBrowser.OpenFolderPanel("Select Output Folder", previousPath);
-            }
-            else
-            {
-                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", previousPath, false);
-                if (paths != null && paths.Length > 0)
-                    selectedPath = paths[0];
-            }
+                string selected = (paths != null && paths.Length > 0) ? paths[0] : "";
+                ApplySelectedOutputFolder(selected, previousPath);
+            });
         #endif
+    }
 
+    private void ApplySelectedOutputFolder(string selectedPath, string previousPath)
+    {
         // If no folder was selected, restore the previous path and return.
         if (string.IsNullOrEmpty(selectedPath) || !Directory.Exists(selectedPath))
         {

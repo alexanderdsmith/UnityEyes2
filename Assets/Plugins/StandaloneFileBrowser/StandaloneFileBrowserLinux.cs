@@ -73,7 +73,7 @@ namespace SFB {
                 title,
                 directory,
                 multiselect,
-                (string result) => { _openFolderCb.Invoke(result.Split((char)28)); });
+                (string result) => { _openFolderCb.Invoke(string.IsNullOrEmpty(result) ? new string[0] : result.Split((char)28)); });
         }
 
         public string SaveFilePanel(string title, string directory, string defaultName, ExtensionFilter[] extensions) {

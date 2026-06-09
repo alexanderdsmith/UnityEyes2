@@ -9,22 +9,28 @@ namespace SFB {
         private static Action<string[]> _openFolderCb;
         private static Action<string> _saveFileCb;
 
+        // Use IntPtr instead of string to prevent Mono from calling free() on the
+        // native pointer after marshaling. The native plugin returns pointers into
+        // NSString UTF8String buffers (autoreleased, not malloc'd), so freeing them
+        // causes POINTER_BEING_FREED_WAS_NOT_ALLOCATED and a SIGABRT crash.
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        public delegate void AsyncCallback(string path);
+        public delegate void AsyncCallback(IntPtr path);
 
         [AOT.MonoPInvokeCallback(typeof(AsyncCallback))]
-        private static void openFileCb(string result) {
-            _openFileCb.Invoke(result.Split((char)28));
+        private static void openFileCb(IntPtr resultPtr) {
+            string result = Marshal.PtrToStringAnsi(resultPtr);
+            _openFileCb.Invoke(string.IsNullOrEmpty(result) ? new string[0] : result.Split((char)28));
         }
 
         [AOT.MonoPInvokeCallback(typeof(AsyncCallback))]
-        private static void openFolderCb(string result) {
-            _openFolderCb.Invoke(result.Split((char)28));
+        private static void openFolderCb(IntPtr resultPtr) {
+            string result = Marshal.PtrToStringAnsi(resultPtr);
+            _openFolderCb.Invoke(string.IsNullOrEmpty(result) ? new string[0] : result.Split((char)28));
         }
 
         [AOT.MonoPInvokeCallback(typeof(AsyncCallback))]
-        private static void saveFileCb(string result) {
-            _saveFileCb.Invoke(result);
+        private static void saveFileCb(IntPtr resultPtr) {
+            _saveFileCb.Invoke(Marshal.PtrToStringAnsi(resultPtr));
         }
 
         [DllImport("StandaloneFileBrowser")]
@@ -46,6 +52,8 @@ namespace SFB {
                 directory,
                 GetFilterFromFileExtensionList(extensions),
                 multiselect));
+            if (string.IsNullOrEmpty(paths))
+                return new string[0];
             return paths.Split((char)28);
         }
 
@@ -64,6 +72,8 @@ namespace SFB {
                 title,
                 directory,
                 multiselect));
+            if (string.IsNullOrEmpty(paths))
+                return new string[0];
             return paths.Split((char)28);
         }
 
