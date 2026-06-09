@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>English</string>
+    <key>CFBundleExecutable</key>
+    <string>UnityEyes2</string>
+    <key>CFBundleGetInfoString</key>
+    <string>Unity Player version 6000.3.17f1 (cf0352b38e81). (c) 2005-2026 Unity Technologies. All rights reserved.</string>
+    <key>CFBundleIconFile</key>
+    <string>PlayerIcon.icns</string>
+    <key>CFBundleIdentifier</key>
+    <string>unity.University of Cambridge.UnityEyes</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>UnityEyes2</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.0</string>
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+      <string>MacOSX</string>
+    </array>
+    <key>CFBundleVersion</key>
+    <string>0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.games</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>12.0</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <true />
+    </dict>
+    <key>NSMainNibFile</key>
+    <string>MainMenu</string>
+    <key>NSPrincipalClass</key>
+    <string>PlayerApplication</string>
+    <key>UnityBuildNumber</key>
+    <string>cf0352b38e81</string>
+  </dict>
+</plist>
