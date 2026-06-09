@@ -47,12 +47,12 @@
                 "rz": -40
                 }, 
               "extrinsics_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0, 
-                "rx": 0, 
-                "ry": 0, 
-                "rz": 0
+                "x": 0.001, 
+                "y": 0.001, 
+                "z": 0.001, 
+                "rx": 0.5, 
+                "ry": 0.5, 
+                "rz": 0.5
                 }
               }, 
             { 
@@ -83,12 +83,12 @@
                 "rz": 40
                 }, 
               "extrinsics_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0, 
-                "rx": 0, 
-                "ry": 0, 
-                "rz": 0
+                "x": 0.001, 
+                "y": 0.001, 
+                "z": 0.001, 
+                "rx": 0.5, 
+                "ry": 0.5, 
+                "rz": 0.5
                 }
               }, 
             { 
@@ -119,12 +119,12 @@
                 "rz": -140
                 }, 
               "extrinsics_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0, 
-                "rx": 0, 
-                "ry": 0, 
-                "rz": 0
+                "x": 0.001, 
+                "y": 0.001, 
+                "z": 0.001, 
+                "rx": 0.5, 
+                "ry": 0.5, 
+                "rz": 0.5
                 }
               }, 
             { 
@@ -155,12 +155,12 @@
                 "rz": 140
                 }, 
               "extrinsics_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0, 
-                "rx": 0, 
-                "ry": 0, 
-                "rz": 0
+                "x": 0.001, 
+                "y": 0.001, 
+                "z": 0.001, 
+                "rx": 0.5, 
+                "ry": 0.5, 
+                "rz": 0.5
                 }
               }
             ], 
@@ -170,14 +170,86 @@
               "type": "point", 
               "array_mounted": 1, 
               "position": { 
-                "x": -0.01, 
+                "x": -0.022, 
                 "y": 0.008, 
                 "z": 0.253
                 }, 
               "position_noise": { 
-                "x": 0, 
-                "y": 0, 
-                "z": 0
+                "x": 0.005, 
+                "y": 0.005, 
+                "z": 0.005
+                }, 
+              "properties": { 
+                "range": 100, 
+                "intensity": 0.3, 
+                "color": { 
+                  "r": 1, 
+                  "g": 1, 
+                  "b": 1
+                  }
+                }
+              }, 
+            { 
+              "name": "point_light_2", 
+              "type": "point", 
+              "array_mounted": 1, 
+              "position": { 
+                "x": 0.022, 
+                "y": 0.008, 
+                "z": 0.253
+                }, 
+              "position_noise": { 
+                "x": 0.005, 
+                "y": 0.005, 
+                "z": 0.005
+                }, 
+              "properties": { 
+                "range": 100, 
+                "intensity": 0.3, 
+                "color": { 
+                  "r": 1, 
+                  "g": 1, 
+                  "b": 1
+                  }
+                }
+              }, 
+            { 
+              "name": "point_light_3", 
+              "type": "point", 
+              "array_mounted": 1, 
+              "position": { 
+                "x": -0.022, 
+                "y": 0.052, 
+                "z": 0.253
+                }, 
+              "position_noise": { 
+                "x": 0.005, 
+                "y": 0.005, 
+                "z": 0.005
+                }, 
+              "properties": { 
+                "range": 100, 
+                "intensity": 0.3, 
+                "color": { 
+                  "r": 1, 
+                  "g": 1, 
+                  "b": 1
+                  }
+                }
+              }, 
+            { 
+              "name": "point_light_4", 
+              "type": "point", 
+              "array_mounted": 1, 
+              "position": { 
+                "x": 0.022, 
+                "y": 0.052, 
+                "z": 0.253
+                }, 
+              "position_noise": { 
+                "x": 0.005, 
+                "y": 0.005, 
+                "z": 0.005
                 }, 
               "properties": { 
                 "range": 100, 
@@ -192,8 +264,8 @@
             ], 
           "eye_parameters": { 
             "pupil_diameter_mm_range": { 
-              "min": 2, 
-              "max": 8
+              "min": 3, 
+              "max": 9
               }, 
             "iris_diameter_mm_range": { 
               "min": 10, 
@@ -201,7 +273,7 @@
               }, 
             "default_yaw": 0, 
             "default_pitch": 0, 
-            "yaw_noise": 20, 
-            "pitch_noise": 15
+            "yaw_noise": 45, 
+            "pitch_noise": 60
             }
           }

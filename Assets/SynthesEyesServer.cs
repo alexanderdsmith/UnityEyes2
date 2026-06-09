@@ -96,9 +96,12 @@ public class SynthesEyesServer : MonoBehaviour{
     private List<Vector3> cameraOriginalPositions = new List<Vector3>();
     private List<Vector3> cameraOriginalRotations = new List<Vector3>();
 
-    // Motion Center -> False (Individual camera extrinsics noise)
     private List<Vector3> cameraExtrinsicsPositionNoise = new List<Vector3>();
     private List<Vector3> cameraExtrinsicsRotationNoise = new List<Vector3>();
+    // Original local positions/rotations within cameraParent (motion-center mode only),
+    // used to apply per-camera noise on top of the array-level noise each frame.
+    private List<Vector3> cameraOriginalLocalPositions = new List<Vector3>();
+    private List<Vector3> cameraOriginalLocalRotations = new List<Vector3>();
 
     private List<CameraIntrinsics> cameraOriginalIntrinsics = new List<CameraIntrinsics>();
 
@@ -164,6 +167,13 @@ public class SynthesEyesServer : MonoBehaviour{
 
                 eyeball.SetPupilSizeRange(eyeParameters.pupilSizeRange);
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
+            }
+
+            MenuController menuController = FindFirstObjectByType<MenuController>();
+            if (menuController != null)
+            {
+                JSONNode rootNode = JSON.Parse(File.ReadAllText(jsonConfigPath));
+                menuController.PopulateUIFromConfig(rootNode);
             }
         }
         else
@@ -555,6 +565,16 @@ public class SynthesEyesServer : MonoBehaviour{
                     cam.transform.parent = cameraParent.transform;
                 }
 
+                // Store each camera's resting local transform so RandomizeScene can
+                // apply per-camera noise on top of the array-level parent noise.
+                cameraOriginalLocalPositions.Clear();
+                cameraOriginalLocalRotations.Clear();
+                foreach (Camera cam in cameraList)
+                {
+                    cameraOriginalLocalPositions.Add(cam.transform.localPosition);
+                    cameraOriginalLocalRotations.Add(cam.transform.localEulerAngles);
+                }
+
                 for (int i = 0; i < pointLightList.Count; i++)
                 {
                     Light light = pointLightList[i];
@@ -856,6 +876,22 @@ public class SynthesEyesServer : MonoBehaviour{
 
             cameraParent.transform.position = cameraArrayCenter + new Vector3(offsetX, offsetY, offsetZ);
             cameraParent.transform.eulerAngles = cameraArrayRotation + new Vector3(offsetPitch, offsetYaw, offsetRoll);
+
+            // Apply per-camera noise on top of the array noise (local space within parent).
+            for (int i = 0; i < cameraList.Count; i++)
+            {
+                if (i >= cameraOriginalLocalPositions.Count) break;
+                Vector3 camPosNoise = i < cameraExtrinsicsPositionNoise.Count ? cameraExtrinsicsPositionNoise[i] : Vector3.zero;
+                Vector3 camRotNoise = i < cameraExtrinsicsRotationNoise.Count ? cameraExtrinsicsRotationNoise[i] : Vector3.zero;
+                cameraList[i].transform.localPosition = cameraOriginalLocalPositions[i] + new Vector3(
+                    GetRandomOffset(camPosNoise.x),
+                    GetRandomOffset(camPosNoise.y),
+                    GetRandomOffset(camPosNoise.z));
+                cameraList[i].transform.localEulerAngles = cameraOriginalLocalRotations[i] + new Vector3(
+                    GetRandomOffset(camRotNoise.x),
+                    GetRandomOffset(camRotNoise.y),
+                    GetRandomOffset(camRotNoise.z));
+            }
         }
         else
         {
@@ -1145,6 +1181,14 @@ public class SynthesEyesServer : MonoBehaviour{
                 eyeball.SetIrisSizeRange(eyeParameters.irisSizeRange);
             }
 
+            // Sync the UI to reflect the loaded config.
+            MenuController menuController = FindFirstObjectByType<MenuController>();
+            if (menuController != null)
+            {
+                JSONNode rootNode = JSON.Parse(File.ReadAllText(path));
+                menuController.PopulateUIFromConfig(rootNode);
+            }
+
             RandomizeScene();
 
             ToggleOutputPreview();
@@ -1186,6 +1230,8 @@ public class SynthesEyesServer : MonoBehaviour{
         cameraOriginalRotations.Clear();
         cameraExtrinsicsPositionNoise.Clear();
         cameraExtrinsicsRotationNoise.Clear();
+        cameraOriginalLocalPositions.Clear();
+        cameraOriginalLocalRotations.Clear();
         cameraOriginalIntrinsics.Clear();
 
         foreach (Light light in pointLightList)

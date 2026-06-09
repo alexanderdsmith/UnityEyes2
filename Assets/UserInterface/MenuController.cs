@@ -469,26 +469,33 @@ public class MenuController : MonoBehaviour
      */
     public void SelectOutputFolder()
     {
+        // Capture current path so we can restore it if the user cancels.
+        string previousPath = outputPathTMP != null ? outputPathTMP.text : "";
+
         string selectedPath = "";
         #if UNITY_EDITOR
-            selectedPath = UnityEditor.EditorUtility.OpenFolderPanel("Select Output Folder", "", "");
+            selectedPath = UnityEditor.EditorUtility.OpenFolderPanel("Select Output Folder", previousPath, "");
         #else
             if (Application.platform == RuntimePlatform.OSXPlayer)
             {
-                selectedPath = MacNativeFileBrowser.OpenFolderPanel("Select Output Folder", "");
+                selectedPath = MacNativeFileBrowser.OpenFolderPanel("Select Output Folder", previousPath);
             }
             else
             {
-                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", "", false);
-                if (paths.Length > 0)
+                string[] paths = StandaloneFileBrowser.OpenFolderPanel("Select Output Folder", previousPath, false);
+                if (paths != null && paths.Length > 0)
                     selectedPath = paths[0];
             }
         #endif
 
-        // If no folder was selected, simply return rather than updating anything.
+        // If no folder was selected, restore the previous path and return.
         if (string.IsNullOrEmpty(selectedPath) || !Directory.Exists(selectedPath))
         {
             Debug.LogWarning("No folder selected or folder doesn't exist. Update canceled.");
+            if (outputPathTMP != null)
+                outputPathTMP.text = previousPath;
+            if (!string.IsNullOrEmpty(previousPath) && synthesEyesServer != null)
+                synthesEyesServer.UpdateOutputPath(previousPath);
             return;
         }
 
@@ -826,7 +833,7 @@ public class MenuController : MonoBehaviour
         cameraInputFields[cameraId]["Intrinsics"] = new InputFieldRefs();
         cameraInputFields[cameraId]["IntrinsicsNoise"] = new InputFieldRefs();
         cameraInputFields[cameraId]["Extrinsics"] = new InputFieldRefs();
-        // cameraInputFields[cameraId]["ExtrinsicsNoise"] = new InputFieldRefs();
+        cameraInputFields[cameraId]["ExtrinsicsNoise"] = new InputFieldRefs();
 
         TMP_InputField[] inputFields = cameraGroup.GetComponentsInChildren<TMP_InputField>(true);
 
@@ -1693,7 +1700,7 @@ public class MenuController : MonoBehaviour
                 var inputRefs = lightInputFields[lightId][groupName];
                 var values = groupEntry.Value;
 
-                if (groupName.Contains("PositionGroupLight"))
+                if (groupName.Contains("PositionGroupLight") || groupName.Contains("PositionNoiseGroup"))
                 {
                     if (inputRefs.x != null && values.ContainsKey("x"))
                         inputRefs.x.text = values["x"].ToString();
@@ -1822,6 +1829,187 @@ public class MenuController : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// Populates every UI panel from a loaded JSON config node so that the
+    /// UI stays in sync after SynthesEyesServer loads or reloads a config.
+    /// Creates/removes camera and light panels as needed, writes all values
+    /// into the in-memory dicts, then calls RestoreInputValues() to push
+    /// them to the actual TMP_InputField controls.
+    /// </summary>
+    public void PopulateUIFromConfig(JSONNode rootNode)
+    {
+        if (rootNode == null) return;
+
+        // ── Output path & sample count ────────────────────────────────
+        if (outputPathTMP != null && rootNode["outputPath"] != null)
+            outputPathTMP.text = rootNode["outputPath"].Value;
+
+        if (rootNode["num_samples"] != null)
+        {
+            sampleCount = rootNode["num_samples"].AsInt;
+            if (numSamplesField != null)
+                numSamplesField.text = sampleCount.ToString();
+        }
+
+        // ── Motion center toggle ──────────────────────────────────────
+        if (motionCenterToggle != null && rootNode["motion_center"] != null)
+            motionCenterToggle.isOn = rootNode["motion_center"].AsInt == 1;
+
+        // ── Camera array center ───────────────────────────────────────
+        void PopulateXYZRot(Dictionary<string, float> d, JSONNode n)
+        {
+            if (n == null || d == null) return;
+            if (n["x"]  != null) d["x"]  = n["x"].AsFloat;
+            if (n["y"]  != null) d["y"]  = n["y"].AsFloat;
+            if (n["z"]  != null) d["z"]  = n["z"].AsFloat;
+            if (n["rx"] != null) d["rx"] = n["rx"].AsFloat;
+            if (n["ry"] != null) d["ry"] = n["ry"].AsFloat;
+            if (n["rz"] != null) d["rz"] = n["rz"].AsFloat;
+        }
+
+        if (motionCenterValues.ContainsKey("CameraArrayCenter"))
+            PopulateXYZRot(motionCenterValues["CameraArrayCenter"], rootNode["camera_array_center"]);
+        if (motionCenterValues.ContainsKey("CameraArrayCenterNoise"))
+            PopulateXYZRot(motionCenterValues["CameraArrayCenterNoise"], rootNode["camera_array_center_noise"]);
+
+        // ── Cameras ───────────────────────────────────────────────────
+        JSONArray camerasArray = rootNode["cameras"]?.AsArray;
+        if (camerasArray != null && camerasArray.Count > 0)
+        {
+            // Trim or extend panels to match JSON count (keep at least 1).
+            while (addedCameras.Count > camerasArray.Count && addedCameras.Count > 1)
+                RemoveCamera();
+            while (addedCameras.Count < camerasArray.Count)
+                AddCamera();
+
+            for (int i = 0; i < camerasArray.Count; i++)
+            {
+                int camId = i + 1;
+                JSONNode cam = camerasArray[i];
+                if (!cameraGroupValues.ContainsKey(camId)) continue;
+
+                // Intrinsics — JSON uses "w"/"h", dict uses "width"/"height"
+                JSONNode intr = cam["intrinsics"];
+                if (intr != null)
+                {
+                    var d = cameraGroupValues[camId]["Intrinsics"];
+                    if (intr["fx"] != null) d["fx"]     = intr["fx"].AsFloat;
+                    if (intr["fy"] != null) d["fy"]     = intr["fy"].AsFloat;
+                    if (intr["cx"] != null) d["cx"]     = intr["cx"].AsFloat;
+                    if (intr["cy"] != null) d["cy"]     = intr["cy"].AsFloat;
+                    if (intr["w"]  != null) d["width"]  = intr["w"].AsFloat;
+                    if (intr["h"]  != null) d["height"] = intr["h"].AsFloat;
+                }
+
+                JSONNode intrN = cam["intrinsics_noise"];
+                if (intrN != null)
+                {
+                    var d = cameraGroupValues[camId]["IntrinsicsNoise"];
+                    if (intrN["fx"] != null) d["fx"]     = intrN["fx"].AsFloat;
+                    if (intrN["fy"] != null) d["fy"]     = intrN["fy"].AsFloat;
+                    if (intrN["cx"] != null) d["cx"]     = intrN["cx"].AsFloat;
+                    if (intrN["cy"] != null) d["cy"]     = intrN["cy"].AsFloat;
+                    if (intrN["w"]  != null) d["width"]  = intrN["w"].AsFloat;
+                    if (intrN["h"]  != null) d["height"] = intrN["h"].AsFloat;
+                }
+
+                PopulateXYZRot(cameraGroupValues[camId]["Extrinsics"],      cam["extrinsics"]);
+                PopulateXYZRot(cameraGroupValues[camId]["ExtrinsicsNoise"],  cam["extrinsics_noise"]);
+            }
+        }
+
+        // ── Lights ────────────────────────────────────────────────────
+        JSONArray lightsArray = rootNode["lights"]?.AsArray;
+        if (lightsArray != null)
+        {
+            while (addedLights.Count > 0)
+                RemoveLight();
+            for (int i = 0; i < lightsArray.Count; i++)
+            {
+                AddLight();
+                int lightId = i + 1;
+                JSONNode light = lightsArray[i];
+                if (!lightGroupValues.ContainsKey(lightId)) continue;
+
+                // Array-mounted toggle
+                bool isArrayMounted = light["array_mounted"] == null || light["array_mounted"].AsInt == 1;
+                lightArrayMountedStates[lightId] = isArrayMounted;
+                if (lightArrayMountedToggles.ContainsKey(lightId))
+                    lightArrayMountedToggles[lightId].isOn = isArrayMounted;
+
+                // Position (x, y, z only — point lights ignore rotation)
+                JSONNode pos = light["position"];
+                if (pos != null)
+                {
+                    var d = lightGroupValues[lightId]["PositionGroupLight"];
+                    if (pos["x"] != null) d["x"] = pos["x"].AsFloat;
+                    if (pos["y"] != null) d["y"] = pos["y"].AsFloat;
+                    if (pos["z"] != null) d["z"] = pos["z"].AsFloat;
+                }
+
+                // Position noise
+                JSONNode posN = light["position_noise"];
+                if (posN != null)
+                {
+                    var d = lightGroupValues[lightId]["PositionNoiseGroup"];
+                    if (posN["x"] != null) d["x"] = posN["x"].AsFloat;
+                    if (posN["y"] != null) d["y"] = posN["y"].AsFloat;
+                    if (posN["z"] != null) d["z"] = posN["z"].AsFloat;
+                }
+
+                // Properties
+                JSONNode props = light["properties"];
+                if (props != null && lightGroupValues[lightId].ContainsKey("Properties"))
+                {
+                    var d = lightGroupValues[lightId]["Properties"];
+                    if (props["range"]     != null) d["range"]     = props["range"].AsFloat;
+                    if (props["intensity"] != null) d["intensity"] = props["intensity"].AsFloat;
+                    JSONNode color = props["color"];
+                    if (color != null)
+                    {
+                        if (color["r"] != null) d["colorR"] = color["r"].AsFloat;
+                        if (color["g"] != null) d["colorG"] = color["g"].AsFloat;
+                        if (color["b"] != null) d["colorB"] = color["b"].AsFloat;
+                    }
+                }
+            }
+        }
+
+        // ── Eye parameters ────────────────────────────────────────────
+        JSONNode eyeParams = rootNode["eye_parameters"];
+        if (eyeParams != null)
+        {
+            // Pupil — prefer mm key, fall back to legacy key
+            JSONNode pupil = eyeParams["pupil_diameter_mm_range"] ?? eyeParams["pupil_size_range"];
+            if (pupil != null && eyeParameterValues.ContainsKey("PupilSize"))
+            {
+                if (pupil["min"] != null) eyeParameterValues["PupilSize"]["min"] = pupil["min"].AsFloat;
+                if (pupil["max"] != null) eyeParameterValues["PupilSize"]["max"] = pupil["max"].AsFloat;
+            }
+
+            // Iris — prefer mm key, fall back to legacy key
+            JSONNode iris = eyeParams["iris_diameter_mm_range"] ?? eyeParams["iris_size_range"];
+            if (iris != null && eyeParameterValues.ContainsKey("IrisSize"))
+            {
+                if (iris["min"] != null) eyeParameterValues["IrisSize"]["min"] = iris["min"].AsFloat;
+                if (iris["max"] != null) eyeParameterValues["IrisSize"]["max"] = iris["max"].AsFloat;
+            }
+
+            // Gaze defaults & noise
+            if (eyeParameterValues.ContainsKey("EyeProperties"))
+            {
+                var ep = eyeParameterValues["EyeProperties"];
+                if (eyeParams["default_yaw"]   != null) ep["yaw"]        = eyeParams["default_yaw"].AsFloat;
+                if (eyeParams["default_pitch"] != null) ep["pitch"]      = eyeParams["default_pitch"].AsFloat;
+                if (eyeParams["yaw_noise"]     != null) ep["yawnoise"]   = eyeParams["yaw_noise"].AsFloat;
+                if (eyeParams["pitch_noise"]   != null) ep["pitchnoise"] = eyeParams["pitch_noise"].AsFloat;
+            }
+        }
+
+        // Push everything to the actual UI controls
+        RestoreInputValues();
+    }
 
     /**
      * Serializes the current configuration into a JSON format.

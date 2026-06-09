@@ -42,6 +42,8 @@ namespace SFB {
                 directory,
                 GetFilterFromFileExtensionList(extensions),
                 multiselect));
+            if (string.IsNullOrEmpty(paths))
+                return new string[0];
             return paths.Split((char)28);
         }
 
@@ -60,6 +62,8 @@ namespace SFB {
                 title,
                 directory,
                 multiselect));
+            if (string.IsNullOrEmpty(paths))
+                return new string[0];
             return paths.Split((char)28);
         }
 
