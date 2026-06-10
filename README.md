@@ -8,9 +8,9 @@ Updated by Alexander Smith, Wenzhou Ding, and Brijesh Muthumanickam
 # Package Releases
 Note, this package is a work in progress! Please report any issues here. Please select the version below for your operating system:
 
-[**Windows**](https://drive.google.com/file/d/1tC8DDAgreNwnAGsBt-en27wzakRT4t15/view?usp=sharing) (.zip, 260.9 MB) *Note: tested on Windows 11 Pro*
+[**Windows**](https://drive.google.com/file/d/11zG3V2OLjebUEP8h6EFe7AnZ0zVB9GbL/view?usp=sharing) (.zip, 260.9 MB) *Note: tested on Windows 11 Pro*
 
-[**Linux**](https://drive.google.com/file/d/1GFr8gMaq3sFArOY_IVb0MWst0DMTo6Lc/view?usp=sharing) (.zip, 255.9 MB) *Note: tested on Ubuntu 26.04 LTS*
+[**Linux**](https://drive.google.com/file/d/18QYM9rMV3F6h43Crn8LGSxxPLMGQ0KhK/view?usp=sharing) (.zip, 255.9 MB) *Note: tested on Ubuntu 26.04 LTS*
 
 [**MacOS**](https://drive.google.com/file/d/19mgtp85eiOsG_wCvQ-ZATujAU_khgo5e/view?usp=sharing) (.zip, 267.1 MB) *Note: tested on M3 Max Apple Silicon Chip*
 
