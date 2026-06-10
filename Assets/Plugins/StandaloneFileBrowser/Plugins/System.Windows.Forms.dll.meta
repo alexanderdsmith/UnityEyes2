@@ -14,14 +14,14 @@ PluginImporter:
     Any:
       enabled: 0
       settings:
-        Exclude Editor: 1
+        Exclude Editor: 0
         Exclude Linux64: 1
         Exclude OSXUniversal: 1
         Exclude WebGL: 1
         Exclude Win: 0
         Exclude Win64: 0
     Editor:
-      enabled: 0
+      enabled: 1
       settings:
         CPU: AnyCPU
         DefaultValueInitialized: true
