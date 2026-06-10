@@ -12,7 +12,7 @@ Note, this package is a work in progress! Please report any issues here. Please 
 
 [**Linux**](https://drive.google.com/file/d/1GFr8gMaq3sFArOY_IVb0MWst0DMTo6Lc/view?usp=sharing) (.zip, 255.9 MB) *Note: tested on Ubuntu 26.04 LTS*
 
-[**MacOS**](https://drive.google.com/file/d/1U6kRJ04InJl_vKF2UwcpZa5_sFWqqQxo/view?usp=sharing) (.zip, 267.1 MB) *Note: tested on M3 Max Apple Silicon Chip*
+[**MacOS**](https://drive.google.com/file/d/19mgtp85eiOsG_wCvQ-ZATujAU_khgo5e/view?usp=sharing) (.zip, 267.1 MB) *Note: tested on M3 Max Apple Silicon Chip*
 
 # How to use UnityEyes 2
 
