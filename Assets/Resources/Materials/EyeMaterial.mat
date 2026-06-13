@@ -78,8 +78,8 @@ Material:
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _PupilRadiusUV: 0.07965197
-    - _PupilSize: 0.031821325
+    - _PupilRadiusUV: 0.059634116
+    - _PupilSize: -0.78691804
     - _ReflectionFresnel: 5
     - _ReflectionIntensity: 0.5
     - _RefractiveIdx: 1.2

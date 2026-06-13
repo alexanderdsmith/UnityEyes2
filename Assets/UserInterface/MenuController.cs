@@ -1350,8 +1350,8 @@ public class MenuController : MonoBehaviour
         eyeParameterValues["EyeProperties"] = new Dictionary<string, float>();
         eyeParameterValues["EyeProperties"]["pitch"] = 0f;
         eyeParameterValues["EyeProperties"]["yaw"] = 0f;
-        eyeParameterValues["EyeProperties"]["pitchnoise"] = 60f;
-        eyeParameterValues["EyeProperties"]["yawnoise"] = 45f;
+        eyeParameterValues["EyeProperties"]["pitchnoise"] = 20f;
+        eyeParameterValues["EyeProperties"]["yawnoise"] = 40f;
     }
 
     private void InitializeEyeParameterInputFields()

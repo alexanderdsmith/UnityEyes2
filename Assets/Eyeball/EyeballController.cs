@@ -131,8 +131,8 @@ public class EyeballController : MonoBehaviour {
         return transform.TransformPoint(iris_middle);
     }
 	
-	public void SetEyeRotation(float yaw, float pitch){
-		transform.eulerAngles = new Vector3(yaw, pitch, 0);
+	public void SetEyeRotation(float pitch, float yaw){
+		transform.eulerAngles = new Vector3(pitch, yaw, 0);
 	}
 
 	public Vector3 GetEyeLookVector(){

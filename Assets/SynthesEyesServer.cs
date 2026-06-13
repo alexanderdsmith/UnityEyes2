@@ -70,8 +70,8 @@ public class SynthesEyesServer : MonoBehaviour{
     public float cameraYawNoise = Mathf.Deg2Rad * 40;
     public float defaultEyePitch = 0;
     public float defaultEyeYaw = 0;
-    public float eyePitchNoise = 30;
-    public float eyeYawNoise = 30;
+    public float eyePitchNoise = 20;
+    public float eyeYawNoise = 40;
 
     private float randomizeSceneStartTime = 0f;
     private int randomizeSceneCallCount = 0;
@@ -227,7 +227,7 @@ public class SynthesEyesServer : MonoBehaviour{
         }
 
         // Gaze noise — used by RandomizeScene when eyeParameters is null.
-        eyeYawNoise   = 15f;
+        eyeYawNoise   = 40f;
         eyePitchNoise = 20f;
         defaultEyeYaw   = 0f;
         defaultEyePitch = 0f;
@@ -858,7 +858,7 @@ public class SynthesEyesServer : MonoBehaviour{
         float randomYaw = Random.Range(-yawNoise, yawNoise) + defaultYaw;
         float randomPitch = Random.Range(-pitchNoise, pitchNoise) + defaultPitch;
 
-        eyeball.SetEyeRotation(randomYaw, randomPitch);
+        eyeball.SetEyeRotation(randomPitch, randomYaw);
 
         // Camera positioning only applies when a config has been loaded with cameras.
         if (cameraList == null || cameraList.Count == 0)
