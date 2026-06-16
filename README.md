@@ -3,7 +3,7 @@ Greater camera control for the UnityEyes Package by Erroll Wood, enabling machin
 
 Updated by Alexander Smith, Wenzhou Ding, and Brijesh Muthumanickam
 
-(c) 2025, University of Illinois at Urbana-Champaign
+(c) 2026, University of Illinois at Urbana-Champaign
 
 # Package Releases
 Note, this package is a work in progress! Please report any issues here. Please select the version below for your operating system:
